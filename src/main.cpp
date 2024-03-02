@@ -41,27 +41,11 @@
 #include "parameter.hpp"
 #include "stringRingBuffer.hpp"
 
-#ifdef ARDUINO_LOLIN_S2_MINI
-
-#define IRTX_PIN            11
-#define IRRX_PIN            12
-#define WIFILED_PIN         15
-#define WIFILED_ON          digitalWrite(LED_BUILTIN, 1)
-#define WIFILED_OFF         digitalWrite(LED_BUILTIN, 0)
-
-#elif ARDUINO_NodeMCU_32S
-
-#define IRTX_PIN            16
-#define IRRX_PIN            5 
+#define IRTX_PIN            22
+#define IRRX_PIN            23
 #define WIFILED_PIN         2
 #define WIFILED_ON          digitalWrite(LED_BUILTIN, 1)
 #define WIFILED_OFF         digitalWrite(LED_BUILTIN, 0)
-
-#else
-
-#error Unknown build target.
-
-#endif
 
 IRsend irSend(IRTX_PIN);
 IRrecv irRecv(IRRX_PIN);
@@ -72,6 +56,7 @@ uint32_t numTx = 0;
 uint32_t numRx = 0;
 
 Task serialTask(10);
+Task networkTask(30000);
 Cli cli;
 UpTime upTime;
 MDNSResponder mdns;
@@ -218,7 +203,7 @@ CLI_COMMAND(help)
     Serial.printf("    save                         Write the parameter values to the flash.\n");
     Serial.printf("  networking [0/1]               Disables or Enables networking at all.\n");
     Serial.printf("  reset                          Resets the CPU.\n");
-    Serial.printf("  irtx [type] code [repeat]      Transmits a IR Code \n");
+    Serial.printf("  tx [type] code [repeat]        Transmits a IR Code \n");
     Serial.printf("                                 type .. optional, ir code, default = NEC\n");
     Serial.printf("                                 code .. the code to send, hex or dec.\n");
     Serial.printf("                                 repeat .. optional, number of Repetitions\n");
@@ -238,6 +223,7 @@ CLI_COMMAND(reset)
 CLI_COMMAND(networking)
 {
     networking_enabled = atoi(argv[0]) == 0 ? false : true;
+    networkTask.setLastTick(0);
     Serial.printf("Networking %s\n", networking_enabled ? "on" : "off");
     return 0;
 }
@@ -440,7 +426,7 @@ bool setup_wifi(void)
 
     start = millis(); 
 
-    if (Parameter.data.ip.dhcp == true)
+    if (Parameter.data.ip.dhcp == false)
     {
         IPAddress ipaddr, gateway, netmask, dns1, dns2;
         ipaddr.fromString((const char*) Parameter.data.ip.ipaddr);
@@ -585,7 +571,7 @@ void loop(void)
 {
     uint32_t now = millis();
 
-    if (networking_enabled)
+    if (networkTask.isScheduled(now) && networking_enabled)
     {
         if (WiFi.status() != WL_CONNECTED) 
         {
