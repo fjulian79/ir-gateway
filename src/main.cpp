@@ -364,7 +364,7 @@ void handleTx()
             code = strtoul(arg, &endPtr, base);
             if (arg == endPtr)
             {
-                message = "ERROR: Invalid code value.7n";
+                message = "ERROR: Invalid code value.\n";
                 transmit = false;
                 break;
             }
