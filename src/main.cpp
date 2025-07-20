@@ -233,7 +233,7 @@ decode_type_t strtoirtype(const char * const str)
     auto *ptr = reinterpret_cast<const char*>(kAllProtocolNamesStr);
     uint16_t length = strlen(ptr);
 
-    for (uint16_t i = 0; length; i++) 
+    for (uint16_t i = 0; length != 0; i++) 
     {
         if (!strcasecmp(str, ptr))
         {
