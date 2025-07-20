@@ -1,7 +1,7 @@
 /*
  * ir-gateway, build to automate ir remote control commands in smart homes.
  *
- * Copyright (C) 2023 Julian Friedrich
+ * Copyright (C) 2025 Julian Friedrich
  * 
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -19,39 +19,47 @@
  * You can file issues at https://github.com/fjulian79/ir-gateway/issues
  */
 
-#ifndef PARAMETER_HPP_
-#define PARAMETER_HPP_
+#pragma once
 
 #include <param/param.hpp>
 #include <cli/cli.hpp>
 
-typedef struct
-{
-    struct 
-    {
+/**
+ * @brief Parameter structure for the ir-gateway.
+ * This structure holds all the parameters used by the application.
+ */
+typedef struct {
+    struct {
         char ssid[32];
         char pass[32];
     }wifi;
 
-    struct 
-    {
+    struct {
         char hostname[32];
         bool dhcp;
         char ipaddr[16];
         char netmask[16];
         char gateway[16];
     }ip;
-    
-    struct 
-    {
+
+    struct {
         char server[16];
         char timezone[32];
     }ntp;
 
 } Parameter_t;
 
+/**
+ * @brief Global parameter object.
+ * This object is used to access and modify the parameters of the application.
+ */
 extern Param<Parameter_t> Parameter;
 
+/**
+ * @brief Clears the parameters and sets them to default values.
+ * 
+ * This function resets all parameters to their default values.
+ * 
+ * @return int8_t Returns 0 on success.
+ */
 int8_t param_clear(void);
-
-#endif /* PARAMETER_HPP_ */

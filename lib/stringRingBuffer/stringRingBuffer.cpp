@@ -1,7 +1,7 @@
 /*
  * ir-gateway, build to automate ir remote control commands in smart homes.
  *
- * Copyright (C) 2023 Julian Friedrich
+ * Copyright (C) 2025 Julian Friedrich
  * 
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -31,16 +31,12 @@ StringRingBuffer::StringRingBuffer(int size) :
 
 }
 
-StringRingBuffer::~StringRingBuffer() 
-{
+StringRingBuffer::~StringRingBuffer() {
     delete[] buffer;
 }
    
-void StringRingBuffer::push(const String& data) 
-{
-    if (itemCount == bufferSize) 
-    {
-    
+void StringRingBuffer::push(const String& data) {
+    if (itemCount == bufferSize) {
         pop();
     }
 
@@ -49,10 +45,8 @@ void StringRingBuffer::push(const String& data)
     itemCount++;
 }
 
-String StringRingBuffer::pop() 
-{
-    if (itemCount == 0) 
-    {
+String StringRingBuffer::pop() {
+    if (itemCount == 0) {
         return String();
     }
 
@@ -63,29 +57,24 @@ String StringRingBuffer::pop()
     return value;
 }
 
-String StringRingBuffer::peek()
-{
+String StringRingBuffer::peek() const {
     String data("none");
 
-    if (itemCount != 0) 
-    {
-        data = buffer[head-1];        
+    if (itemCount != 0) {
+        data = buffer[head-1];
     }
 
     return data;
 }
 
-String StringRingBuffer::dump()
-{
+String StringRingBuffer::dump() const {
     String data("empty\n");
     uint8_t pos = tail;
 
-    if (!isEmpty())
-    {
+    if (!isEmpty()) {
         data.clear();
 
-        do 
-        {
+        do {
             data += buffer[pos] + "\n";
             pos = (pos + 1) % bufferSize;
 
