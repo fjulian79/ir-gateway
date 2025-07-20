@@ -95,6 +95,27 @@ class WebServerControl {
         void handleTx();
         
         /**
+         * @brief Handle sequence transmission requests.
+         */
+        void handleTxSequence();
+        
+        /**
+         * @brief Execute a sequence of IR commands.
+         * @param sequence The sequence string to execute.
+         * @param errorMessage Reference to store error messages.
+         * @return Number of executed commands, or -1 on error.
+         */
+        int executeSequence(const String& sequence, String& errorMessage);
+        
+        /**
+         * @brief Execute a single command from a sequence.
+         * @param command The command string to execute.
+         * @param errorMessage Reference to store error messages.
+         * @return True on success, false on error.
+         */
+        bool executeSequenceCommand(const String& command, String& errorMessage);
+
+        /**
          * @brief Handle the reception of IR signals.
          * This method processes requests to receive IR signals.
          */

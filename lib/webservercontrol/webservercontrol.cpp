@@ -66,6 +66,7 @@ void WebServerControl::handleClient() {
 void WebServerControl::setupRoutes() {
     Server.on("/", [this]() { handleRoot(); });
     Server.on("/tx", [this]() { handleTx(); });
+    Server.on("/txseq", [this]() { handleTxSequence(); });
     Server.on("/txlog", [this]() { handleTxLog(); });
     Server.on("/rxlog", [this]() { handleRxLog(); });
     Server.onNotFound([this]() { handleNotFound(); });
@@ -149,6 +150,119 @@ void WebServerControl::handleTx() {
     }  
 
     Server.send(200, "text/plain", message);
+}
+
+void WebServerControl::handleTxSequence() {
+    String message;
+    String sequence;
+
+    for (uint8_t i = 0; i < Server.args(); i++) {
+        if (Server.argName(i) == "sequence") {
+            sequence = Server.arg(i);
+            break;
+        }
+    }
+
+    if (sequence.length() == 0) {
+        message = "ERROR: Missing sequence parameter.\n";
+        message += "Format: /txseq?sequence=type:code:repeat:pause,type:code:repeat:pause,...\n";
+        message += "Example: /txseq?sequence=nec:0x1234:1:500,nec:0x5678:2:1000\n";
+        message += "Pause is in milliseconds (optional, default=100ms)\n";
+        Server.send(400, "text/plain", message);
+        return;
+    }
+
+    int executed = executeSequence(sequence, message);
+    
+    if (executed >= 0) {
+        message = "Sequence executed: " + String(executed) + " commands\n" + message;
+        Server.send(200, "text/plain", message);
+    } else {
+        Server.send(400, "text/plain", message);
+    }
+}
+
+int WebServerControl::executeSequence(const String& sequence, String& errorMessage) {
+    String command;
+    int commandCount = 0;
+    int startPos = 0;
+    int commaPos = 0;
+
+    do {
+        commaPos = sequence.indexOf(',', startPos);
+        if (commaPos == -1) {
+            command = sequence.substring(startPos);
+        } else {
+            command = sequence.substring(startPos, commaPos);
+        }
+
+        command.trim();
+        if (command.length() == 0) {
+            break;
+        }
+
+        if (!executeSequenceCommand(command, errorMessage)) {
+            return -1;
+        }
+
+        commandCount++;
+        startPos = commaPos + 1;
+    } while (commaPos != -1);
+
+    return commandCount;
+}
+
+bool WebServerControl::executeSequenceCommand(const String& command, String& errorMessage) {
+    int colonPos1 = command.indexOf(':');
+    int colonPos2 = command.indexOf(':', colonPos1 + 1);
+    int colonPos3 = command.indexOf(':', colonPos2 + 1);
+
+    if (colonPos1 == -1 || colonPos2 == -1) {
+        errorMessage = "ERROR: Invalid command format: " + command + "\n";
+        errorMessage += "Expected: type:code:repeat[:pause]\n";
+        return false;
+    }
+
+    String typeStr = command.substring(0, colonPos1);
+    String codeStr = command.substring(colonPos1 + 1, colonPos2);
+    String repeatStr = command.substring(colonPos2 + 1, colonPos3 == -1 ? command.length() : colonPos3);
+    String pauseStr = colonPos3 == -1 ? "100" : command.substring(colonPos3 + 1);
+
+    decode_type_t type = irControl.stringToIRType(typeStr.c_str());
+    if (type == decode_type_t::UNKNOWN) {
+        errorMessage = "ERROR: Unknown type: " + typeStr + "\n";
+        return false;
+    }
+
+    char* endPtr;
+    uint32_t base = is32BitHex(codeStr.c_str()) ? 16 : 10;
+    uint32_t code = strtoul(codeStr.c_str(), &endPtr, base);
+    if (codeStr.c_str() == endPtr) {
+        errorMessage = "ERROR: Invalid code: " + codeStr + "\n";
+        return false;
+    }
+
+    uint32_t repeat = strtoul(repeatStr.c_str(), &endPtr, 10);
+    if (repeatStr.c_str() == endPtr) {
+        errorMessage = "ERROR: Invalid repeat: " + repeatStr + "\n";
+        return false;
+    }
+    repeat = constrain(repeat, 0, 15);
+
+    uint32_t pause = strtoul(pauseStr.c_str(), &endPtr, 10);
+    if (pauseStr.c_str() == endPtr) {
+        errorMessage = "ERROR: Invalid pause: " + pauseStr + "\n";
+        return false;
+    }
+    pause = constrain(pause, 0, 5000);
+
+    irControl.transmit(type, code, repeat);
+    
+    if (pause > 0) {
+        delay(pause);
+    }
+
+    return true;
 }
 
 void WebServerControl::handleTxLog() {
