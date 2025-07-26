@@ -8,6 +8,10 @@ LG TV:
     Input HDMI2         0x20DF33CC
     Input HDMI3         0x20DF9768
 
+Epson Beamer:
+    Power On            0xC1AA09F6
+    Power Off           0xC1AA8976
+
 Bose Soundbar:
     Power Toggle        0x5D0531CE 
     Power On            0x5D0532CD
@@ -24,3 +28,6 @@ HDMI Matrix:
     Out B - CH2         0x40BF8877
     Out B - CH3         0x40BF48B7
     Out B - CH4         0x40BF28D7
+
+Apple TV:
+    TV Button           0x17047777
