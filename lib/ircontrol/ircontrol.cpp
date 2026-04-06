@@ -1,7 +1,7 @@
 /*
  * ir-gateway, build to automate ir remote control commands in smart homes.
  *
- * Copyright (C) 2025 Julian Friedrich
+ * Copyright (C) 2026 Julian Friedrich
  * 
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
