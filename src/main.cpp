@@ -161,6 +161,22 @@ CLI_COMMAND(rxlog) {
     return 0;
 }
 
+bool setup_mdns(void) {
+    if (mdns.begin(Parameter.data.ip.hostname)) {
+        mdns.addService("http", "tcp", 80);
+    }
+
+    return true;
+}
+
+bool setup_ntp(void) {
+    configTime(0, 0, Parameter.data.ntp.server);
+    setenv("TZ", Parameter.data.ntp.timezone, 1);
+    tzset();
+
+    return true;
+}
+
 bool setup_wifi(void) {
     const uint8_t timeout_sec = 5;
     uint32_t start = 0;
@@ -197,24 +213,10 @@ bool setup_wifi(void) {
 
     ms = millis() - start;
     Serial.printf("%s (%ums)\n", WiFi.localIP().toString().c_str(), ms);
+    setup_mdns();
+    setup_ntp();
     randomSeed(micros()); 
     WIFILED_ON;
-
-    return true;   
-}
-
-bool setup_mdns(void) {
-    if (mdns.begin(Parameter.data.ip.hostname)) {
-        mdns.addService("http", "tcp", 80);
-    }
-
-    return true;
-}
-
-bool setup_ntp(void) {
-    configTime(0, 0, Parameter.data.ntp.server);
-    setenv("TZ", Parameter.data.ntp.timezone, 1);
-    tzset();
 
     return true;
 }
@@ -237,8 +239,6 @@ void setup(void) {
         setup_wifi();
     }
 
-    setup_mdns();
-    setup_ntp();
     webServerControl.begin();
     upTime.begin();
     irControl.begin();
