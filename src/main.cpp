@@ -98,7 +98,7 @@ CLI_COMMAND(help) {
     Serial.printf("    set [name]                   Set a single value. use without a name to\n"); 
     Serial.printf("                                 see the list of supported names.\n");
     Serial.printf("    save                         Write the parameter values to the flash.\n");
-    Serial.printf("  networking [0/1]               Disables or Enables networking at all.\n");
+    Serial.printf("  networking [1/0/on/off]        Disables or Enables networking at all.\n");
     Serial.printf("  reset                          Resets the CPU.\n");
     Serial.printf("  tx [type] code [repeat]        Transmits a IR Code \n");
     Serial.printf("                                 type .. optional, ir code, default = NEC\n");
@@ -117,7 +117,23 @@ CLI_COMMAND(reset) {
 }
 
 CLI_COMMAND(networking) {
-    networking_enabled = atoi(argv[0]) == 0 ? false : true;
+    bool enable = false;
+
+    if (argc != 1) {
+        Serial.printf("Error: Wrong number of arguments. Usage: networking [1/0/on/off]\n");
+        return -1;
+    }
+
+    if (strcmp(argv[0], "1") == 0 || strcmp(argv[0], "on") == 0) {
+        enable = true;
+    } else if (strcmp(argv[0], "0") == 0 || strcmp(argv[0], "off") == 0) {
+        enable = false;
+    } else {
+        Serial.printf("Error: Invalid argument. Usage: networking [1/0/on/off]\n");
+        return -1;
+    }   
+
+    networking_enabled = enable;
     networkTask.setLastTick(0);
     Serial.printf("Networking %s\n", networking_enabled ? "on" : "off");
     return 0;
