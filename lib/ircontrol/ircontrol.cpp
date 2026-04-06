@@ -66,13 +66,19 @@ void IRControl::transmit(decode_type_t type, uint32_t code, uint16_t repeat) {
     String hexcode = String(code, HEX);
     String protocol = typeToString(type);
     String ts = getTimeStamp();
+    uint16_t retransmit = repeat;
 
     hexcode.toUpperCase();
     lastTx.push(ts + String("; ") + protocol + String("; 0x") + hexcode);
     numTx++;
 
     irRecv.pause();
-    irSend.send(type, code, 32, repeat);
+    do {
+        irSend.send(type, code, 32, 0);
+        if (retransmit > 0) {
+            retransmit--;
+        }
+    } while (retransmit > 0);
     irRecv.resume();
 
     Serial.printf("%s IR TX: %s 0x%0X", ts.c_str(), protocol.c_str(), code);
