@@ -16,6 +16,11 @@ IR Gateway is an ESP32-based infrared remote control gateway designed to automat
 - **mDNS**: Easy discovery via hostname resolution (e.g., `ir-gateway.local`)
 - **NTP Time Sync**: Automatic time synchronization for accurate logging
 
+
+## Change Log
+
+See [CHANGELOG.md](CHANGELOG.md) for a detailed history of changes and updates.
+
 ## Hardware Requirements
 
 ### Supported Boards
