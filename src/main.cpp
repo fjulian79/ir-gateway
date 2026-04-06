@@ -222,6 +222,10 @@ bool setup_wifi(void) {
 }
 
 void setup(void) {
+    pinMode(DEBUG_A_PIN, OUTPUT);
+    digitalWrite(DEBUG_A_PIN, LOW);
+    pinMode(DEBUG_B_PIN, OUTPUT);
+    digitalWrite(DEBUG_B_PIN, LOW);
     pinMode(WIFILED_PIN, OUTPUT);
     WIFILED_OFF;
 

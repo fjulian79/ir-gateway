@@ -32,6 +32,8 @@
 #define WIFILED_OFF         digitalWrite(LED_BUILTIN, 0)
 #define IRTX_PIN            22
 #define IRRX_PIN            23
+#define DEBUG_A_PIN         19
+#define DEBUG_B_PIN         18
 
 /**
  * @brief Check if the string is a valid 32-bit hex number.
