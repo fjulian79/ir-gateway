@@ -20,6 +20,7 @@
  */
 
 #include "common.hpp"
+#include <cli/cli.hpp>
 
 bool is32BitHex(const char *str, uint8_t maxlen) {
     size_t len = strlen(str);
@@ -59,6 +60,7 @@ String getVersionString(void) {
     data += "Build:    " + String(__DATE__) + ", " + __TIME__ + "\n";
     data += "Git Repo: " + String(VERSION_GIT_REMOTE_ORIGIN) + "\n";
     data += "Revision: " + String(VERSION_GIT_LONG) + "\n";
+    data += "libCli:   " + String(CLI_VERSION) + "\n";
     data += "\n";
     data += "This program comes with ABSOLUTELY NO WARRANTY. This is free software, and you\n";
     data += "are welcome to redistribute it under certain conditions.\n";

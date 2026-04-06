@@ -227,7 +227,7 @@ void setup(void) {
 
     Serial.begin(115200);
     Serial.println();
-    cmd_ver(0, 0);
+    cmd_ver(Serial, 0, 0);
 
     if(Parameter.begin() != true) {
         Serial.printf("Error: Invalid parameters.\n");
