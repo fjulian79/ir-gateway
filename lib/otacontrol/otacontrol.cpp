@@ -58,6 +58,8 @@ void OtaControl::begin(const char *hostname) {
     });
     ArduinoOTA.onProgress([](unsigned int progress, unsigned int total) {
         static uint8_t last = 0;
+        /* The whole update runs within ArduinoOTA.handle() */
+        feedLoopWDT();
         uint8_t percent = (progress * 100) / total;
         if (percent / 10 != last / 10) {
             Serial.printf("OTA: %u%%\n", percent);

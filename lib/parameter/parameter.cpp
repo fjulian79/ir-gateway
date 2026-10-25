@@ -42,8 +42,13 @@ String readString(bool secret = false) {
     char c = 0;
 
     while(1) {
-        while(!Serial.available());
-        c = Serial.read();    
+        while(!Serial.available()) {
+            /* Waiting for user input must not trigger the loop watchdog.
+             * One ms delay to avoid busy waiting */
+            feedLoopWDT();
+            delay(1);
+        }
+        c = Serial.read();
 
         if (c == '\r') {
             /* pressed return, we are done */

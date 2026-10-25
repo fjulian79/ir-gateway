@@ -24,12 +24,14 @@
 #include "parameter.hpp"
 #include "ircontrol.hpp"
 #include "otacontrol.hpp"
+#include "healthcontrol.hpp"
 #include <generic/uptime.hpp>
 #include <version/version.h>
 
 extern IRControl irControl;
 extern UpTime upTime;
 extern OtaControl otaControl;
+extern HealthControl healthControl;
 extern volatile time_t ntp_last_sync;
 
 WebServerControl::WebServerControl(int port) : 
@@ -72,6 +74,12 @@ void WebServerControl::setupRoutes() {
     Server.on("/txseq", [this]() { handleTxSequence(); });
     Server.on("/txlog", [this]() { handleTxLog(); });
     Server.on("/rxlog", [this]() { handleRxLog(); });
+    /* POST only, a GET could be triggered by any web page, e.g. via <img> */
+    Server.on("/reset", HTTP_POST, [this]() { handleReset(); });
+    Server.on("/reset", HTTP_GET, [this]() {
+        Server.send(405, "text/plain", "Use POST, e.g. curl -X POST http://"
+            + String(Parameter.data.ip.hostname) + ".local/reset\n");
+    });
     Server.onNotFound([this]() { handleNotFound(); });
 }
 
@@ -88,7 +96,9 @@ void WebServerControl::handleRoot() {
     data += "System:\n";
     data += "  Date:         " + getTimeStamp() + "\n";
     data += "  Uptime:       " + upTime.toString() + "\n";
-    data += "  Reset reason: " + String(esp_reset_reason()) + "\n";
+    data += "  Reset reason: " + String(healthControl.getResetReason())
+        + (healthControl.getRestartReason()[0] ? ", " : "") + healthControl.getRestartReason() + "\n";
+    data += "  Resets:       " + String(healthControl.getResetCount()) + " since power on\n";
     data += "  Heap:         " + String(ESP.getFreeHeap()) + " free, "
         + String(ESP.getMinFreeHeap()) + " min free, "
         + String(ESP.getMaxAllocHeap()) + " max block\n";
@@ -275,12 +285,19 @@ bool WebServerControl::executeSequenceCommand(const String& command, String& err
     pause = constrain(pause, 0, 5000);
 
     irControl.transmit(type, code, repeat);
-    
+
     if (pause > 0) {
         delay(pause);
     }
 
+    /* Sequences may take longer than the loop watchdog timeout */
+    feedLoopWDT();
     return true;
+}
+
+void WebServerControl::handleReset() {
+    Server.send(200, "text/plain", "Restarting ...\n");
+    healthControl.restart("Web reset request");
 }
 
 void WebServerControl::handleTxLog() {

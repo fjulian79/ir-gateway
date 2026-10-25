@@ -34,6 +34,7 @@
 #include "ircontrol.hpp"
 #include "webservercontrol.hpp"
 #include "otacontrol.hpp"
+#include "healthcontrol.hpp"
 
 Task networkTask(30000);
 Cli cli;
@@ -41,6 +42,7 @@ UpTime upTime;
 IRControl irControl;
 WebServerControl webServerControl;
 OtaControl otaControl;
+HealthControl healthControl;
 bool networking_enabled = false;
 bool network_services_started = false;
 bool wifi_connected = false;
@@ -64,7 +66,9 @@ CLI_COMMAND(info) {
     Serial.printf("  Heap min free: %u\n", ESP.getMinFreeHeap());
     Serial.printf("  Heap max blk:  %u\n", ESP.getMaxAllocHeap());
     Serial.printf("  MAC:           %s\n", WiFi.macAddress().c_str());
-    Serial.printf("  Reset reason:  %u\n", esp_reset_reason());
+    Serial.printf("  Reset reason:  %s%s%s\n", healthControl.getResetReason(),
+        healthControl.getRestartReason()[0] ? ", " : "", healthControl.getRestartReason());
+    Serial.printf("  Resets:        %u since power on\n", healthControl.getResetCount());
     Serial.printf("  Up time:       %s\n", upTime.toString().c_str());
     Serial.printf("  Date:          %s\n", getTimeStamp().c_str());
     Serial.printf("\n");
@@ -125,9 +129,7 @@ CLI_COMMAND(help) {
 }
 
 CLI_COMMAND(reset) {
-    Serial.printf("Resetting the CPU ...\n");
-    delay(100);
-    ESP.restart();
+    healthControl.restart("CLI reset command");
     return 0;
 }
 
@@ -324,6 +326,7 @@ void setup(void) {
     upTime.begin();
     irControl.begin();
     cli.begin();
+    healthControl.begin();
 }
 
 void loop(void) {
@@ -333,6 +336,7 @@ void loop(void) {
     irControl.handleReceive();
     webServerControl.handleClient();
     otaControl.handle();
+    healthControl.loop(now, networking_enabled);
     upTime.loop();
     cli.loop();
 }

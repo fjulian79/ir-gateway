@@ -116,6 +116,12 @@ class WebServerControl {
         bool executeSequenceCommand(const String& command, String& errorMessage);
 
         /**
+         * @brief Handle reset requests.
+         * Restarts the device, only accepted via POST.
+         */
+        void handleReset();
+
+        /**
          * @brief Handle the reception of IR signals.
          * This method processes requests to receive IR signals.
          */
