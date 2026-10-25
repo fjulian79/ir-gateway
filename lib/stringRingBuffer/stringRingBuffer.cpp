@@ -61,7 +61,7 @@ String StringRingBuffer::peek() const {
     String data("none");
 
     if (itemCount != 0) {
-        data = buffer[head-1];
+        data = buffer[(head + bufferSize - 1) % bufferSize];
     }
 
     return data;
