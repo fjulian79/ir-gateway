@@ -61,6 +61,8 @@ CLI_COMMAND(info) {
     Serial.printf("  Flash:         %uMB, %uMhz, Mode 0x%0x\n", ESP.getFlashChipSize()/(1024*1024), ESP.getFlashChipSpeed()/1000000, ESP.getFlashChipMode());
     Serial.printf("  PSRAM:         %u free of %u\n", ESP.getFreePsram(), ESP.getPsramSize());
     Serial.printf("  Heap:          %u free of %u\n", ESP.getFreeHeap(), ESP.getHeapSize());
+    Serial.printf("  Heap min free: %u\n", ESP.getMinFreeHeap());
+    Serial.printf("  Heap max blk:  %u\n", ESP.getMaxAllocHeap());
     Serial.printf("  MAC:           %s\n", WiFi.macAddress().c_str());
     Serial.printf("  Reset reason:  %u\n", esp_reset_reason());
     Serial.printf("  Up time:       %s\n", upTime.toString().c_str());
