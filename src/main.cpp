@@ -37,7 +37,6 @@
 Task networkTask(30000);
 Cli cli;
 UpTime upTime;
-MDNSResponder mdns;
 IRControl irControl;
 WebServerControl webServerControl;
 OtaControl otaControl;
@@ -187,10 +186,17 @@ CLI_COMMAND(rxlog) {
 }
 
 bool setup_mdns(void) {
-    if (mdns.begin(Parameter.data.ip.hostname)) {
-        mdns.addService("http", "tcp", 80);
+    if (!MDNS.begin(Parameter.data.ip.hostname)) {
+        Serial.printf("mDNS: Failed to start\n");
+        return false;
     }
 
+    if (!MDNS.addService("http", "tcp", webServerControl.getPort())) {
+        Serial.printf("mDNS: Failed to add http service\n");
+        return false;
+    }
+
+    Serial.printf("mDNS: Started as %s.local\n", Parameter.data.ip.hostname);
     return true;
 }
 
