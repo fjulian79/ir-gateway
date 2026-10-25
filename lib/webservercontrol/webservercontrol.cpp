@@ -23,11 +23,14 @@
 #include <WiFi.h>
 #include "parameter.hpp"
 #include "ircontrol.hpp"
+#include "otacontrol.hpp"
 #include <generic/uptime.hpp>
 #include <version/version.h>
 
 extern IRControl irControl;
 extern UpTime upTime;
+extern OtaControl otaControl;
+extern volatile time_t ntp_last_sync;
 
 WebServerControl::WebServerControl(int port) : 
       Server(port)
@@ -77,12 +80,27 @@ void WebServerControl::handleNotFound() {
 }
 
 void WebServerControl::handleRoot() {
-    String data = getVersionString() + "\n";
+    String data;
     String hostname(Parameter.data.ip.hostname);
-    
-    data += "Date:          " + getTimeStamp() + "\n";
-    data += "Uptime:        " + upTime.toString() + "\n";
-    data += "WiFi RSSI:     " + String(WiFi.RSSI()) + "dBm\n";
+
+    data.reserve(2048);
+    data += getVersionString() + "\n";
+    data += "System:\n";
+    data += "  Date:         " + getTimeStamp() + "\n";
+    data += "  Uptime:       " + upTime.toString() + "\n";
+    data += "  Reset reason: " + String(esp_reset_reason()) + "\n";
+    data += "  Heap:         " + String(ESP.getFreeHeap()) + " free, "
+        + String(ESP.getMinFreeHeap()) + " min free, "
+        + String(ESP.getMaxAllocHeap()) + " max block\n";
+    data += "\n";
+    data += "Network:\n";
+    data += "  IP:           " + WiFi.localIP().toString() + "\n";
+    data += "  DNS:          " + WiFi.dnsIP().toString() + "\n";
+    data += "  WiFi RSSI:    " + String(WiFi.RSSI()) + "dBm\n";
+    data += "  NTP sync:     " + (ntp_last_sync ? getTimeStamp(ntp_last_sync) : String("never")) + "\n";
+    data += "  OTA:          " + String(otaControl.isEnabled() ? "ready" : "disabled")
+        + (OtaControl::isPasswordSet() ? ", password protected" : ", no password")
+        + (otaControl.isSignatureRequired() ? ", signed images only" : ", unsigned images accepted") + "\n";
     data += "\n";
     data += "Tx Data:\n";
     data += "  Count:  " + String(irControl.getTxCount()) + "\n";
