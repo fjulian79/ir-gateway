@@ -42,6 +42,11 @@ IRControl irControl;
 WebServerControl webServerControl;
 OtaControl otaControl;
 bool networking_enabled = false;
+bool network_services_started = false;
+bool wifi_connected = false;
+uint32_t wifi_connect_start = 0;
+
+bool setup_wifi(void);
 
 CLI_COMMAND(ver) {
     Serial.printf("\n%s\n", getVersionString().c_str());
@@ -138,9 +143,24 @@ CLI_COMMAND(networking) {
         return -1;
     }   
 
+    if (enable && Parameter.data.wifi.ssid[0] == 0) {
+        Serial.printf("Error: No WiFi configured, see param set ssid\n");
+        return -1;
+    }
+
+    if (enable == networking_enabled) {
+        Serial.printf("Networking already %s\n", networking_enabled ? "on" : "off");
+        return 0;
+    }
+
     networking_enabled = enable;
-    networkTask.setLastTick(0);
     Serial.printf("Networking %s\n", networking_enabled ? "on" : "off");
+    if (networking_enabled) {
+        setup_wifi();
+    } else {
+        WiFi.disconnect(true);
+        WiFi.mode(WIFI_OFF);
+    }
     return 0;
 }
 
@@ -182,16 +202,19 @@ bool setup_ntp(void) {
     return true;
 }
 
+/**
+ * @brief Starts connecting to the WiFi, does not wait for the connection.
+ * Reconnecting is handled by the WiFi stack, see handle_wifi() for the
+ * connection state handling.
+ */
 bool setup_wifi(void) {
-    const uint8_t timeout_sec = 5;
-    uint32_t start = 0;
-    uint32_t ms = 0;
-
     WIFILED_OFF;
-    Serial.printf("WiFi: Connecting to %s, ", Parameter.data.wifi.ssid);
+    Serial.printf("WiFi: Connecting to %s\n", Parameter.data.wifi.ssid);
+    WiFi.setHostname(Parameter.data.ip.hostname);
     WiFi.mode(WIFI_STA);
-
-    start = millis(); 
+    /* Power save delays incoming requests by up to the beacon interval */
+    WiFi.setSleep(false);
+    WiFi.setAutoReconnect(true);
 
     if (Parameter.data.ip.dhcp == false) {
         IPAddress ipaddr, gateway, netmask, dns1, dns2;
@@ -208,23 +231,48 @@ bool setup_wifi(void) {
     }
    
     WiFi.begin(Parameter.data.wifi.ssid, Parameter.data.wifi.pass);
-    while (WiFi.status() != WL_CONNECTED) {
-        ms = millis() - start;
-        if(ms > (timeout_sec * 1000)) {
-            Serial.printf("Timeout(%u sec)\n", timeout_sec);
-            return false;
-        }
-    }
-
-    ms = millis() - start;
-    Serial.printf("%s (%ums)\n", WiFi.localIP().toString().c_str(), ms);
-    setup_mdns();
-    setup_ntp();
-    otaControl.begin(Parameter.data.ip.hostname);
-    randomSeed(micros());
-    WIFILED_ON;
+    wifi_connect_start = millis();
 
     return true;
+}
+
+/**
+ * @brief Tracks the WiFi connection state, has to be called from loop().
+ * The network services are started once on the first connect, they keep
+ * running across reconnects.
+ */
+void handle_wifi(uint32_t now) {
+    bool connected = WiFi.isConnected();
+
+    if (connected == wifi_connected) {
+        /* Fallback in case the WiFi stack gave up reconnecting */
+        if (!connected && networking_enabled && networkTask.isScheduled(now)) {
+            Serial.printf("WiFi: Still not connected, retrying\n");
+            WiFi.reconnect();
+        }
+        return;
+    }
+
+    wifi_connected = connected;
+    if (!connected) {
+        WIFILED_OFF;
+        Serial.printf("WiFi: Connection lost\n");
+        networkTask.setLastTick(now);
+        wifi_connect_start = now;
+        return;
+    }
+
+    WIFILED_ON;
+    Serial.printf("WiFi: Connected, %s (%ums)\n", WiFi.localIP().toString().c_str(),
+        now - wifi_connect_start);
+
+    if (!network_services_started) {
+        setup_mdns();
+        setup_ntp();
+        otaControl.begin(Parameter.data.ip.hostname);
+        randomSeed(micros());
+        network_services_started = true;
+    }
 }
 
 void setup(void) {
@@ -258,13 +306,7 @@ void setup(void) {
 void loop(void) {
     uint32_t now = millis();
 
-    if (networkTask.isScheduled(now) && networking_enabled) {
-        if (WiFi.status() != WL_CONNECTED) {
-            WiFi.disconnect();
-            setup_wifi();
-        }
-    }
-
+    handle_wifi(now);
     irControl.handleReceive();
     webServerControl.handleClient();
     otaControl.handle();
