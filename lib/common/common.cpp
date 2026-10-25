@@ -45,11 +45,23 @@ String getTimeStamp(void) {
     struct tm timeinfo;
     char timeStringBuff[20];
 
-    if (getLocalTime(&timeinfo)) {
+    /* Do not wait for the time, the default timeout of 5s blocks every caller
+     * as long as NTP has not been synchronized */
+    if (getLocalTime(&timeinfo, 0)) {
         strftime(timeStringBuff, sizeof(timeStringBuff), "%Y-%m-%d %H:%M:%S", &timeinfo);
     } else {
         sprintf(timeStringBuff, "ntp error");
     }
+
+    return String(timeStringBuff);
+}
+
+String getTimeStamp(time_t t) {
+    struct tm timeinfo;
+    char timeStringBuff[20];
+
+    localtime_r(&t, &timeinfo);
+    strftime(timeStringBuff, sizeof(timeStringBuff), "%Y-%m-%d %H:%M:%S", &timeinfo);
 
     return String(timeStringBuff);
 }

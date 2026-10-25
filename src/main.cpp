@@ -23,6 +23,7 @@
 #include <WiFi.h>
 #include "time.h"
 #include <ESPmDNS.h>
+#include <esp_sntp.h>
 
 #include <generic/task.hpp>
 #include <generic/uptime.hpp>
@@ -44,6 +45,7 @@ bool networking_enabled = false;
 bool network_services_started = false;
 bool wifi_connected = false;
 uint32_t wifi_connect_start = 0;
+volatile time_t ntp_last_sync = 0;
 
 bool setup_wifi(void);
 
@@ -90,6 +92,8 @@ CLI_COMMAND(info) {
     Serial.printf("  WiFi Status:   %s\n", WiFi.isConnected() ? "Connected" : "Connecting ...");
     Serial.printf("  WiFi IP:       %s\n", WiFi.localIP().toString().c_str());
     Serial.printf("  WiFi RSSI:     %ddBm\n", WiFi.RSSI());
+    Serial.printf("  DNS:           %s\n", WiFi.dnsIP().toString().c_str());
+    Serial.printf("  NTP Sync:      %s\n", ntp_last_sync ? getTimeStamp(ntp_last_sync).c_str() : "never");
     Serial.printf("  Homepage:      http://%s.local\n", Parameter.data.ip.hostname);
     Serial.printf("  OTA:           %s, %s, %s\n", otaControl.isEnabled() ? "Ready" : "Disabled",
         OtaControl::isPasswordSet() ? "password protected" : "no password",
@@ -201,9 +205,20 @@ bool setup_mdns(void) {
 }
 
 bool setup_ntp(void) {
-    configTime(0, 0, Parameter.data.ntp.server);
-    setenv("TZ", Parameter.data.ntp.timezone, 1);
-    tzset();
+    /* sntp keeps the pointers, so only pass strings with static lifetime */
+    static const char fallback_server[] = "pool.ntp.org";
+    const char *server2 = strcmp(Parameter.data.ntp.server, fallback_server) ? fallback_server : nullptr;
+
+    sntp_set_time_sync_notification_cb([](struct timeval *tv) {
+        bool first = (ntp_last_sync == 0);
+        ntp_last_sync = tv->tv_sec;
+        if (first) {
+            Serial.printf("NTP: Time synchronized, %s\n", getTimeStamp().c_str());
+        }
+    });
+    configTzTime(Parameter.data.ntp.timezone, Parameter.data.ntp.server, server2);
+    Serial.printf("NTP: Started, server %s%s%s\n", Parameter.data.ntp.server,
+        server2 ? ", fallback " : "", server2 ? server2 : "");
 
     return true;
 }

@@ -52,6 +52,13 @@ bool is32BitHex(const char *str, uint8_t maxlen = 10);
 String getTimeStamp(void);
 
 /**
+ * @brief Get the given time as timestamp.
+ * @param t The time to convert, local time zone is applied.
+ * @return The timestamp as a string.
+ */
+String getTimeStamp(time_t t);
+
+/**
  * @brief Get the version string of the project.
  * @return The version string.
  */
