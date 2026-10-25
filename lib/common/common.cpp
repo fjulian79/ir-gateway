@@ -67,7 +67,7 @@ String getTimeStamp(time_t t) {
 }
 
 String getVersionString(void) {
-    String data = String(VERSION_PROJECT) + " " + String(VERSION_GIT_SHORT) + ", Copyright (C) 2024 Julian Friedrich\n";
+    String data = String(VERSION_PROJECT) + " " + String(VERSION_GIT_SHORT) + ", Copyright (C) 2026 Julian Friedrich\n";
 
     data += "Build:    " + String(__DATE__) + ", " + __TIME__ + "\n";
     data += "Git Repo: " + String(VERSION_GIT_REMOTE_ORIGIN) + "\n";

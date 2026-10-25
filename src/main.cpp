@@ -79,9 +79,9 @@ CLI_COMMAND(info) {
     Serial.printf("  Network:\n");
     Serial.printf("    Hostname:    %s\n", Parameter.data.ip.hostname);
     Serial.printf("    DHCP:        %s\n", Parameter.data.ip.dhcp ? "true" : "false");
-    Serial.printf("    IP-Adress    %s\n", Parameter.data.ip.ipaddr);
+    Serial.printf("    IP address:  %s\n", Parameter.data.ip.ipaddr);
     Serial.printf("    Netmask:     %s\n", Parameter.data.ip.netmask);
-    Serial.printf("    Gateway      %s\n", Parameter.data.ip.gateway);
+    Serial.printf("    Gateway:     %s\n", Parameter.data.ip.gateway);
     Serial.printf("  NTP:\n");
     Serial.printf("    Server:      %s\n", Parameter.data.ntp.server);
     Serial.printf("    Timezone:    %s\n", Parameter.data.ntp.timezone);
@@ -111,7 +111,9 @@ CLI_COMMAND(info) {
 CLI_COMMAND(help) {
     Serial.printf("Supported commands:\n");
     Serial.printf("  ver                            Prints version infos.\n");
-    Serial.printf("  param cmd ...                  Parameter control, supported commands:\n");
+    Serial.printf("  info                           Prints system, parameter, IR and network\n");
+    Serial.printf("                                 status.\n");
+    Serial.printf("  param cmd ...                Parameter control, supported commands:\n");
     Serial.printf("    clear                        Resets all values to default.\n");
     Serial.printf("    write                        Paste all values at once to the terminal.\n");
     Serial.printf("    set [name]                   Set a single value. use without a name to\n"); 
@@ -123,7 +125,9 @@ CLI_COMMAND(help) {
     Serial.printf("                                 type .. optional, ir code, default = NEC\n");
     Serial.printf("                                 code .. the code to send, hex or dec.\n");
     Serial.printf("                                 repeat .. optional, number of Repetitions\n");
-    Serial.printf("  help                           Prints this text.\n"); 
+    Serial.printf("  txlog                          Prints the log of transmitted IR codes.\n");
+    Serial.printf("  rxlog                          Prints the log of received IR codes.\n");
+    Serial.printf("  help                          Prints this text.\n"); 
     Serial.printf("\n");
     return 0;
 }

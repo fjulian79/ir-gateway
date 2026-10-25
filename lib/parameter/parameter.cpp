@@ -22,7 +22,7 @@
 #include <Arduino.h>
 #include "parameter.hpp"
 
-#define readStringParameter(_param_)        readString().toCharArray(_param_, sizeof(_param_))
+#define readStringParameter(_param_, ...)   readStringInto(_param_, sizeof(_param_), ##__VA_ARGS__)
 
 Param<Parameter_t> Parameter;
 
@@ -72,6 +72,35 @@ String readString(bool secret = false) {
     return ret;
 }
 
+/**
+ * @brief Reads a string from the serial console into a parameter.
+ * Input not fitting into the parameter is rejected instead of truncated, as
+ * e.g. a truncated WiFi password would silently prevent connecting.
+ * @return true if the parameter has been updated.
+ */
+bool readStringInto(char *param, size_t size, bool secret = false) {
+    String value = readString(secret);
+
+    if (value.length() >= size) {
+        Serial.printf("Error: Too long, max %u characters. Value not changed.\n", size - 1);
+        return false;
+    }
+
+    value.toCharArray(param, size);
+    return true;
+}
+
+/**
+ * @brief Reads a yes/no value from the serial console.
+ * @return true for "yes", "true", "on" or "1", false otherwise.
+ */
+bool readBool(void) {
+    String value = readString();
+
+    value.toLowerCase();
+    return value == "yes" || value == "true" || value == "on" || value == "1";
+}
+
 int8_t param_clear(void) {
     Parameter.clear();
         
@@ -92,7 +121,7 @@ int8_t param_write(void) {
     readStringParameter(Parameter.data.wifi.ssid);
     readStringParameter(Parameter.data.wifi.pass);
     readStringParameter(Parameter.data.ip.hostname);
-    Parameter.data.ip.dhcp = readString().equals("true");
+    Parameter.data.ip.dhcp = readBool();
     readStringParameter(Parameter.data.ip.ipaddr);
     readStringParameter(Parameter.data.ip.netmask);
     readStringParameter(Parameter.data.ip.gateway);
@@ -116,8 +145,7 @@ int8_t param_set(const char *pName) {
 
     if (strcmp(pName, "wifi-passwd") == 0) {
         Serial.printf("Enter WiFi password: ");
-        readString(true).toCharArray(Parameter.data.wifi.pass, 
-                sizeof(Parameter.data.wifi.pass));
+        readStringParameter(Parameter.data.wifi.pass, true);
         return 0;
     }
 
@@ -129,7 +157,7 @@ int8_t param_set(const char *pName) {
 
     if (strcmp(pName, "dhcp") == 0) {
         Serial.printf("Enable DHCP? [yes|no]: ");
-        Parameter.data.ip.dhcp = readString().equals("yes");
+        Parameter.data.ip.dhcp = readBool();
         return 0;
     }
 
@@ -153,7 +181,7 @@ int8_t param_set(const char *pName) {
     }
 
     if (strcmp(pName, "ntp-server") == 0) {
-        Serial.printf("Enter IPv4 ntp server adress: ");
+        Serial.printf("Enter NTP server, hostname or IPv4 address: ");
         readStringParameter(Parameter.data.ntp.server);
     
         return 0;

@@ -28,8 +28,8 @@
  * Pin definitions
  */
 #define WIFILED_PIN         2
-#define WIFILED_ON          digitalWrite(LED_BUILTIN, 1)
-#define WIFILED_OFF         digitalWrite(LED_BUILTIN, 0)
+#define WIFILED_ON          digitalWrite(WIFILED_PIN, 1)
+#define WIFILED_OFF         digitalWrite(WIFILED_PIN, 0)
 #define IRTX_PIN            22
 #define IRRX_PIN            23
 #define DEBUG_A_PIN         19
