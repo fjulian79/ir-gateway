@@ -32,6 +32,7 @@
 #include "parameter.hpp"
 #include "ircontrol.hpp"
 #include "webservercontrol.hpp"
+#include "otacontrol.hpp"
 
 Task networkTask(30000);
 Cli cli;
@@ -39,6 +40,7 @@ UpTime upTime;
 MDNSResponder mdns;
 IRControl irControl;
 WebServerControl webServerControl;
+OtaControl otaControl;
 bool networking_enabled = false;
 
 CLI_COMMAND(ver) {
@@ -85,6 +87,9 @@ CLI_COMMAND(info) {
     Serial.printf("  WiFi IP:       %s\n", WiFi.localIP().toString().c_str());
     Serial.printf("  WiFi RSSI:     %ddBm\n", WiFi.RSSI());
     Serial.printf("  Homepage:      http://%s.local\n", Parameter.data.ip.hostname);
+    Serial.printf("  OTA:           %s, %s, %s\n", otaControl.isEnabled() ? "Ready" : "Disabled",
+        OtaControl::isPasswordSet() ? "password protected" : "no password",
+        otaControl.isSignatureRequired() ? "signed images only" : "unsigned images accepted");
     Serial.printf("\n");
     return 0;
 }
@@ -215,7 +220,8 @@ bool setup_wifi(void) {
     Serial.printf("%s (%ums)\n", WiFi.localIP().toString().c_str(), ms);
     setup_mdns();
     setup_ntp();
-    randomSeed(micros()); 
+    otaControl.begin(Parameter.data.ip.hostname);
+    randomSeed(micros());
     WIFILED_ON;
 
     return true;
@@ -261,6 +267,7 @@ void loop(void) {
 
     irControl.handleReceive();
     webServerControl.handleClient();
+    otaControl.handle();
     upTime.loop();
     cli.loop();
 }

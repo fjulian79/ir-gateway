@@ -15,6 +15,7 @@ IR Gateway is an ESP32-based infrared remote control gateway designed to automat
 - **Logging**: Track transmission and reception history with configurable log sizes
 - **mDNS**: Easy discovery via hostname resolution (e.g., `ir-gateway.local`)
 - **NTP Time Sync**: Automatic time synchronization for accurate logging
+- **OTA Updates**: Password protected firmware updates via network, signed images only
 
 
 ## Change Log
@@ -65,6 +66,29 @@ pio run -t upload
 ```bash
 pio device monitor
 ```
+
+### OTA Updates
+
+Once the device runs a firmware with OTA support and is connected to WiFi, new
+firmware can be uploaded via network:
+```bash
+pio run -e nodemcu-32s-ota -t upload
+```
+
+Adjust `upload_port` in `platformio.ini` if the hostname is not `ir-gateway`.
+
+The device only accepts firmware images signed with your private key and
+requires the OTA password. Both are created in `secrets/` on the first build:
+
+- `ota_password` .. OTA password, compiled into the firmware.
+- `ota_signing_key.pem` .. private key used to sign every firmware image.
+- `ota_public_key.*` .. public key, derived from the private key and compiled
+  into the firmware.
+
+The `secrets/` folder is excluded from git, keep a backup of it. If it gets
+lost, a new one is created on the next build and the device has to be flashed
+via USB once, as it only accepts images signed with the old key. The signature
+is only checked for OTA updates, uploading via USB always works.
 
 ## Configuration
 
