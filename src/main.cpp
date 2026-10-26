@@ -366,6 +366,8 @@ void handle_wifi(uint32_t now) {
     ntp_recovery_last = now;
 
     if (!network_services_started) {
+        /* Needs the network stack, which is not started without WiFi */
+        webServerControl.begin();
         setup_mdns();
         setup_ntp();
         otaControl.begin(Parameter.data.ip.hostname);
@@ -399,7 +401,6 @@ void setup(void) {
         setup_wifi();
     }
 
-    webServerControl.begin();
     upTime.begin();
     irControl.begin();
     cli.begin();
