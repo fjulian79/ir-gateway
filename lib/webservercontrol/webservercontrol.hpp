@@ -132,7 +132,13 @@ class WebServerControl {
          * This method processes requests to view the reception log.
          */
         void handleRxLog();
-        
+
+        /**
+         * @brief Handle the system log.
+         * This method processes requests to view the system log.
+         */
+        void handleSysLog();
+
         /**
          * @brief Handle the configuration of the web server.
          * This method processes requests to configure the web server settings.

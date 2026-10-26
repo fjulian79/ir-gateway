@@ -71,6 +71,19 @@ class SysLog : public Print {
 
         using Print::write;
 
+        /**
+         * @brief Print all stored lines, oldest first, each terminated by a
+         * newline.
+         * @param out Where to print the lines to.
+         */
+        void printTo(Print &out) const;
+
+        /**
+         * @brief Get the number of bytes printTo() writes.
+         * @return The length of all stored lines including the newlines.
+         */
+        size_t getLength() const;
+
     private:
 
         /**

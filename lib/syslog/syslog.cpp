@@ -22,6 +22,11 @@
 #include "syslog.hpp"
 #include <esp_timer.h>
 
+/**
+ * @brief Size of a stored line, the timestamp and the line.
+ */
+#define SYSLOG_ENTRY_SIZE               (SYSLOG_LINE_MAX + 24)
+
 static char logData[SYSLOG_SIZE];
 
 SysLog sysLog;
@@ -55,7 +60,7 @@ size_t SysLog::write(const uint8_t *buffer, size_t size) {
 }
 
 void SysLog::flushLine() {
-    char entry[SYSLOG_LINE_MAX + 24];
+    char entry[SYSLOG_ENTRY_SIZE];
     struct tm timeinfo;
     size_t len;
 
@@ -79,4 +84,20 @@ void SysLog::flushLine() {
 
     Lines.append(entry, len);
     Serial.println(entry);
+}
+
+void SysLog::printTo(Print &out) const {
+    char entry[SYSLOG_ENTRY_SIZE];
+    size_t len;
+
+    for (size_t pos = Lines.first(); pos != LineRingBuffer::npos; pos = Lines.next(pos)) {
+        len = Lines.read(pos, entry, sizeof(entry));
+        entry[len] = '\n';
+        out.write((const uint8_t *) entry, len + 1);
+    }
+}
+
+size_t SysLog::getLength() const {
+    /* Each line is stored with a null terminator, printed as newline */
+    return Lines.getUsed();
 }

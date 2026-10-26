@@ -76,6 +76,7 @@ void WebServerControl::setupRoutes() {
     Server.on("/txseq", [this]() { handleTxSequence(); });
     Server.on("/txlog", [this]() { handleTxLog(); });
     Server.on("/rxlog", [this]() { handleRxLog(); });
+    Server.on("/syslog", [this]() { handleSysLog(); });
     /* POST only, a GET could be triggered by any web page, e.g. via <img> */
     Server.on("/reset", HTTP_POST, [this]() { handleReset(); });
     Server.on("/reset", HTTP_GET, [this]() {
@@ -104,6 +105,7 @@ void WebServerControl::handleRoot() {
     data += "  Heap:         " + String(ESP.getFreeHeap()) + " free, "
         + String(ESP.getMinFreeHeap()) + " min free, "
         + String(ESP.getMaxAllocHeap()) + " max block\n";
+    data += "  Log:          http://" + hostname + ".local/syslog\n";
     data += "\n";
     data += "Network:\n";
     data += "  IP:           " + WiFi.localIP().toString() + "\n";
@@ -310,7 +312,15 @@ void WebServerControl::handleTxLog() {
 
 void WebServerControl::handleRxLog() {
     String data = irControl.getRxLog();
-    Server.send(200, "text/plain", data);   
+    Server.send(200, "text/plain", data);
+}
+
+void WebServerControl::handleSysLog() {
+    /* Written directly to the client, a String would need a heap block of
+     * the size of the whole log */
+    Server.setContentLength(sysLog.getLength());
+    Server.send(200, "text/plain", "");
+    sysLog.printTo(Server.client());
 }
 
 bool WebServerControl::isEnabled() const {

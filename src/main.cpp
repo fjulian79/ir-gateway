@@ -144,6 +144,7 @@ CLI_COMMAND(help) {
     ioStream.printf("                                 repeat .. optional, number of Repetitions\n");
     ioStream.printf("  txlog                          Prints the log of transmitted IR codes.\n");
     ioStream.printf("  rxlog                          Prints the log of received IR codes.\n");
+    ioStream.printf("  syslog                         Prints the system log.\n");
     ioStream.printf("  help                          Prints this text.\n"); 
     ioStream.printf("\n");
     return 0;
@@ -211,6 +212,11 @@ CLI_COMMAND(txlog) {
 
 CLI_COMMAND(rxlog) {
     ioStream.print(irControl.getRxLog().c_str());
+    return 0;
+}
+
+CLI_COMMAND(syslog) {
+    sysLog.printTo(ioStream);
     return 0;
 }
 
