@@ -33,6 +33,7 @@ extern UpTime upTime;
 extern OtaControl otaControl;
 extern HealthControl healthControl;
 extern volatile time_t ntp_last_sync;
+extern uint32_t ntp_recovery_count;
 
 WebServerControl::WebServerControl(int port) : 
       Server(port)
@@ -107,7 +108,8 @@ void WebServerControl::handleRoot() {
     data += "  IP:           " + WiFi.localIP().toString() + "\n";
     data += "  DNS:          " + WiFi.dnsIP().toString() + "\n";
     data += "  WiFi RSSI:    " + String(WiFi.RSSI()) + "dBm\n";
-    data += "  NTP sync:     " + (ntp_last_sync ? getTimeStamp(ntp_last_sync) : String("never")) + "\n";
+    data += "  NTP sync:     " + (ntp_last_sync ? getTimeStamp(ntp_last_sync) : String("never"))
+        + ", " + String(ntp_recovery_count) + " recovery attempts\n";
     data += "  OTA:          " + String(otaControl.isEnabled() ? "ready" : "disabled")
         + (OtaControl::isPasswordSet() ? ", password protected" : ", no password")
         + (otaControl.isSignatureRequired() ? ", signed images only" : ", unsigned images accepted") + "\n";

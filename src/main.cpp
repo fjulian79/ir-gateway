@@ -48,6 +48,20 @@ bool network_services_started = false;
 bool wifi_connected = false;
 uint32_t wifi_connect_start = 0;
 volatile time_t ntp_last_sync = 0;
+uint32_t ntp_recovery_last = 0;
+uint32_t ntp_recovery_count = 0;
+uint8_t ntp_recovery_step = 0;
+
+/**
+ * @brief Time after connecting to the WiFi or the last recovery attempt,
+ * before NTP is considered as broken without a synchronization.
+ */
+#define NTP_RECOVERY_TIMEOUT_MS     (15 * 60 * 1000)
+
+/**
+ * @brief Maximum age of the last synchronization, sntp synchronizes every 3h.
+ */
+#define NTP_MAX_SYNC_AGE_S          (7 * 60 * 60)
 
 bool setup_wifi(void);
 
@@ -99,7 +113,8 @@ CLI_COMMAND(info) {
     Serial.printf("  WiFi IP:       %s\n", WiFi.localIP().toString().c_str());
     Serial.printf("  WiFi RSSI:     %ddBm\n", WiFi.RSSI());
     Serial.printf("  DNS:           %s\n", WiFi.dnsIP().toString().c_str());
-    Serial.printf("  NTP Sync:      %s\n", ntp_last_sync ? getTimeStamp(ntp_last_sync).c_str() : "never");
+    Serial.printf("  NTP Sync:      %s, %u recovery attempts\n",
+        ntp_last_sync ? getTimeStamp(ntp_last_sync).c_str() : "never", ntp_recovery_count);
     Serial.printf("  Homepage:      http://%s.local\n", Parameter.data.ip.hostname);
     Serial.printf("  OTA:           %s, %s, %s\n", otaControl.isEnabled() ? "Ready" : "Disabled",
         OtaControl::isPasswordSet() ? "password protected" : "no password",
@@ -232,6 +247,45 @@ bool setup_ntp(void) {
 }
 
 /**
+ * @brief Recovers NTP if it did not synchronize for too long, has to be called
+ * from loop(). Alternately restarts the NTP client, which resolves the server
+ * name again, and reconnects the WiFi to get fresh DHCP data, e.g. the DNS
+ * server. E.g. ASUS routers resolve every name to their own address as long
+ * as the internet connection is down after a power outage.
+ */
+void handle_ntp(uint32_t now) {
+    bool synced = ntp_last_sync != 0 && (time(nullptr) - ntp_last_sync) < NTP_MAX_SYNC_AGE_S;
+
+    if (!wifi_connected || !network_services_started) {
+        return;
+    }
+
+    if (synced) {
+        if (ntp_recovery_step != 0) {
+            Serial.printf("NTP: Recovered after %u attempts\n", ntp_recovery_step);
+            ntp_recovery_step = 0;
+        }
+        ntp_recovery_last = now;
+        return;
+    }
+
+    if (now - ntp_recovery_last < NTP_RECOVERY_TIMEOUT_MS) {
+        return;
+    }
+
+    ntp_recovery_last = now;
+    ntp_recovery_count++;
+    if (ntp_recovery_step % 2 == 0) {
+        Serial.printf("NTP: No synchronization, restarting NTP client\n");
+        setup_ntp();
+    } else {
+        Serial.printf("NTP: Still no synchronization, reconnecting WiFi\n");
+        WiFi.reconnect();
+    }
+    ntp_recovery_step++;
+}
+
+/**
  * @brief Starts connecting to the WiFi, does not wait for the connection.
  * Reconnecting is handled by the WiFi stack, see handle_wifi() for the
  * connection state handling.
@@ -294,6 +348,9 @@ void handle_wifi(uint32_t now) {
     WIFILED_ON;
     Serial.printf("WiFi: Connected, %s (%ums)\n", WiFi.localIP().toString().c_str(),
         now - wifi_connect_start);
+        
+    /* Reset the NTP recovery timer on successful connection */
+    ntp_recovery_last = now;
 
     if (!network_services_started) {
         setup_mdns();
@@ -337,6 +394,7 @@ void loop(void) {
     uint32_t now = millis();
 
     handle_wifi(now);
+    handle_ntp(now);
     irControl.handleReceive();
     webServerControl.handleClient();
     otaControl.handle();
