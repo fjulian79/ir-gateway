@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 The format is based on Keep a Changelog.
 
+## [Unreleased]
+### Added
+- Added `txlog on|off` and `rxlog on|off` to print new IR codes to the serial console as they occur, e.g. to learn the codes of a remote. The `info` command shows if it is on.
+### Changed
+- The IR logs use the timestamp of the system log and are kept in a fixed buffer instead of the heap, 40 to 50 codes each. They are no longer printed to the serial console by default.
+- The web server writes the IR logs directly to the client, without building them in memory first.
+- The timestamp of the logs is provided by a function, so the system log does not depend on the platform anymore.
+
 ## [v1.4.0] - 2026-10-26
 ### Added
 - Added a system log with timestamps and syslog severities, shown by the `syslog` command and at `/syslog`. It is kept across resets, e.g. by the watchdog, and marks each boot with the firmware version.

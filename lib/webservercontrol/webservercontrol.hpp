@@ -23,6 +23,7 @@
 
 #include <WebServer.h>
 #include <Arduino.h>
+#include "eventlog.hpp"
 
 /**
  * @brief Web server control class.
@@ -132,6 +133,12 @@ class WebServerControl {
          * This method processes requests to view the reception log.
          */
         void handleRxLog();
+
+        /**
+         * @brief Send an event log as response.
+         * @param log The log to send.
+         */
+        void sendEventLog(const EventLog &log);
 
         /**
          * @brief Handle the system log.

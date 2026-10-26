@@ -12,7 +12,7 @@ IR Gateway is an ESP32-based infrared remote control gateway designed to automat
 - **Command Line Interface**: Interactive CLI for development and debugging
 - **Sequence Support**: Execute multiple IR commands in sequence with configurable delays
 - **WiFi Connectivity**: Connect to your home network with DHCP or static IP configuration
-- **Logging**: Track transmission and reception history with configurable log sizes
+- **Logging**: Track transmission and reception history, optionally live on the serial console
 - **System Log**: Timestamped system events with syslog severities, kept across resets
 - **mDNS**: Easy discovery via hostname resolution (e.g., `ir-gateway.local`)
 - **NTP Time Sync**: Automatic time synchronization for accurate logging
@@ -177,15 +177,29 @@ Events like WiFi connects, NTP synchronization, OTA updates and restarts are
 logged with a timestamp and a severity as known from syslog:
 
 ```
-1970-01-01 00:00:00.064 notice  --- Boot, ir-gateway v1.4.0
+1970-01-01 00:00:00.064 notice  --- Boot --- ir-gateway v1.4.0
 1970-01-01 00:00:01.250 info    WiFi: Connected, 192.168.1.100 (1089ms)
-2026-10-26 16:35:32.417 info    NTP: Time synchronized, up time 0 days, 00:00:02.310
+2026-10-26 16:35:32.417 info    NTP: Time synchronized (up time 0 days, 00:00:02.310)
 ```
 
 Until NTP is synchronized the timestamp is the time since boot, starting at
 1970-01-01. The log is kept across resets, e.g. by the watchdog, but not
 across a power cycle. Only errors are printed to the serial console, view the
 whole log by the `syslog` command or at `/syslog`.
+
+### IR Logs
+
+Transmitted and received IR codes are logged with the same timestamp, the
+most recent ones are kept, 40 to 50 each:
+
+```
+2026-10-26 23:10:12.872 NEC 0xC1AA09F6 (repeat 2x)
+```
+
+View them by the `txlog` and `rxlog` commands or at `/txlog` and `/rxlog`. To
+see new codes as they occur, e.g. to learn the codes of a remote, switch the
+serial log on by `rxlog on` or `txlog on` and off again by `off`. It is off
+after a restart, the `info` command shows the current state.
 
 ### Command Line Interface
 
@@ -195,8 +209,8 @@ Connect via serial terminal for interactive control:
 ver                             # Show version information
 info                            # Display system information
 tx nec 0x1234 1                 # Transmit IR code
-txlog                           # Show transmission log
-rxlog                           # Show reception log
+txlog [on|off]                  # Show transmission log, switch its serial log
+rxlog [on|off]                  # Show reception log, switch its serial log
 syslog                          # Show system log
 networking 1                    # Enable/disable networking
 reset                           # Restart device
@@ -272,12 +286,12 @@ ir-gateway/
 │   └── main.cpp              # Main application
 ├── lib/
 │   ├── common/               # Common utilities
+│   ├── eventlog/             # Log of the IR codes
 │   ├── healthcontrol/        # Watchdog, health checks and restarts
 │   ├── ircontrol/            # IR transmission/reception
 │   ├── otacontrol/           # OTA firmware updates
 │   ├── parameter/            # Configuration management
-│   ├── stringRingBuffer/     # Circular string buffer
-│   ├── syslog/               # System log
+│   ├── syslog/               # System log, timestamps and BoundedWriter
 │   └── webservercontrol/     # Web server handling
 └── README.md
 ```
@@ -293,7 +307,7 @@ ir-gateway/
 - Verify pin connections match your board configuration
 - Check IR LED polarity and current limiting resistor
 - Test with known working remote codes
-- Use `rxlog` to verify reception is working
+- Use `rxlog on` and press a button of the remote to verify reception is working
 
 ### Web Interface Not Accessible
 - Confirm device is connected to WiFi (check `syslog` via the serial console)

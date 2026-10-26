@@ -20,14 +20,17 @@
  */
 
 #include "ircontrol.hpp"
+#include "timestamp.hpp"
 
-IRControl::IRControl(uint8_t txPin, uint8_t rxPin, uint8_t logSize) 
+IRControl::IRControl(uint8_t txPin, uint8_t rxPin)
     : irSend(txPin)
     , irRecv(rxPin)
-    , lastTx(logSize)
-    , lastRx(logSize)
+    , txLog(txLogData, sizeof(txLogData))
+    , rxLog(rxLogData, sizeof(rxLogData))
     , numTx(0)
     , numRx(0) {
+    txLog.setTimeStamp(timeStampSystem);
+    rxLog.setTimeStamp(timeStampSystem);
 }
 
 void IRControl::begin(void) {
@@ -63,13 +66,13 @@ int8_t IRControl::transmit(const char* type, const char* code, const char* repea
 }
 
 void IRControl::transmit(decode_type_t type, uint32_t code, uint16_t repeat) {
-    String hexcode = String(code, HEX);
-    String protocol = typeToString(type);
-    String ts = getTimeStamp();
     uint16_t retransmit = repeat;
 
-    hexcode.toUpperCase();
-    lastTx.push(ts + String("; ") + protocol + String("; 0x") + hexcode);
+    if (repeat != 0) {
+        txLog.log("%s 0x%lX (repeat %ux)", typeToString(type).c_str(), (unsigned long) code, repeat);
+    } else {
+        txLog.log("%s 0x%lX", typeToString(type).c_str(), (unsigned long) code);
+    }
     numTx++;
 
     irRecv.pause();
@@ -80,25 +83,17 @@ void IRControl::transmit(decode_type_t type, uint32_t code, uint16_t repeat) {
         }
     } while (retransmit > 0);
     irRecv.resume();
-
-    Serial.printf("%s IR TX: %s 0x%0X", ts.c_str(), protocol.c_str(), code);
-    if(repeat != 0) {
-        Serial.printf(" (repeat %dx)", repeat);
-    }      
-    Serial.printf("\n");
 }
 
 void IRControl::handleReceive(void) {
     if (irRecv.decode(&irRxData)) {
-        String ts = getTimeStamp();
         String protocol = typeToString(irRxData.decode_type);
         String hexvalue = resultToHexidecimal(&irRxData);
-        
+
         irRecv.resume();
 
-        lastRx.push(ts + String("; ") + protocol + String("; ") + hexvalue);
+        rxLog.log("%s %s", protocol.c_str(), hexvalue.c_str());
         numRx++;
-        Serial.printf("%s IR RX: %s %s\n", ts.c_str(), protocol.c_str(), hexvalue.c_str());
     }
 }
 
@@ -125,18 +120,27 @@ uint32_t IRControl::getRxCount(void) const {
     return numRx;
 }
 
+/**
+ * @brief Get the most recent event of a log as String, "none" if empty.
+ */
+static String getLast(const EventLog &log) {
+    char buf[EVENTLOG_TIMESTAMP_MAX + 1 + EVENTLOG_LINE_MAX];
+
+    return log.readLast(buf, sizeof(buf)) ? String(buf) : String("none");
+}
+
 String IRControl::getLastTx(void) const {
-    return lastTx.peek();
+    return getLast(txLog);
 }
 
 String IRControl::getLastRx(void) const {
-    return lastRx.peek();
+    return getLast(rxLog);
 }
 
-String IRControl::getTxLog(void) const {
-    return lastTx.dump();
+EventLog &IRControl::getTxLog(void) {
+    return txLog;
 }
 
-String IRControl::getRxLog(void) const {
-    return lastRx.dump();
+EventLog &IRControl::getRxLog(void) {
+    return rxLog;
 }

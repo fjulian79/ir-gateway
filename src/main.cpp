@@ -110,9 +110,11 @@ CLI_COMMAND(info) {
     ioStream.printf("  Tx Data:\n");
     ioStream.printf("    Count:       %u\n", irControl.getTxCount());
     ioStream.printf("    Last:        %s\n", irControl.getLastTx().c_str());
+    ioStream.printf("    Serial log:  %s\n", irControl.getTxLog().getMonitor() ? "on" : "off");
     ioStream.printf("  Rx Data:\n");
     ioStream.printf("    Count:       %u\n", irControl.getRxCount());
     ioStream.printf("    Last:        %s\n", irControl.getLastRx().c_str());
+    ioStream.printf("    Serial log:  %s\n", irControl.getRxLog().getMonitor() ? "on" : "off");
     ioStream.printf("\n");
     ioStream.printf("Network:\n");
     ioStream.printf("  WiFi Status:   %s\n", WiFi.isConnected() ? "Connected" : "Connecting ...");
@@ -146,8 +148,10 @@ CLI_COMMAND(help) {
     ioStream.printf("                                 type .. optional, ir code, default = NEC\n");
     ioStream.printf("                                 code .. the code to send, hex or dec.\n");
     ioStream.printf("                                 repeat .. optional, number of Repetitions\n");
-    ioStream.printf("  txlog                          Prints the log of transmitted IR codes.\n");
-    ioStream.printf("  rxlog                          Prints the log of received IR codes.\n");
+    ioStream.printf("  txlog [on|off]                 Prints the log of transmitted IR codes,\n");
+    ioStream.printf("                                 on prints new ones as they occur.\n");
+    ioStream.printf("  rxlog [on|off]                 Prints the log of received IR codes,\n");
+    ioStream.printf("                                 on prints new ones as they occur.\n");
     ioStream.printf("  syslog                         Prints the system log.\n");
     ioStream.printf("  help                          Prints this text.\n"); 
     ioStream.printf("\n");
@@ -209,14 +213,41 @@ CLI_COMMAND(tx) {
     }
 }
 
+/**
+ * @brief Prints an event log, or switches the serial log of new events to
+ * the console of the command on or off, like tail -f.
+ */
+int8_t eventLogCommand(EventLog &log, Stream &ioStream, const char *argv[], uint8_t argc) {
+    if (argc == 0) {
+        if (log.getLength() == 0) {
+            ioStream.printf("No codes logged yet\n");
+        }
+        log.printTo(ioStream);
+        return 0;
+    }
+
+    if (argc == 1 && strcmp(argv[0], "on") == 0) {
+        log.setMonitor(&ioStream);
+        ioStream.printf("Serial log on\n");
+        return 0;
+    }
+
+    if (argc == 1 && strcmp(argv[0], "off") == 0) {
+        log.setMonitor(nullptr);
+        ioStream.printf("Serial log off\n");
+        return 0;
+    }
+
+    ioStream.printf("Error: Invalid argument, use on or off\n");
+    return -1;
+}
+
 CLI_COMMAND(txlog) {
-    ioStream.print(irControl.getTxLog().c_str());
-    return 0;
+    return eventLogCommand(irControl.getTxLog(), ioStream, argv, argc);
 }
 
 CLI_COMMAND(rxlog) {
-    ioStream.print(irControl.getRxLog().c_str());
-    return 0;
+    return eventLogCommand(irControl.getRxLog(), ioStream, argv, argc);
 }
 
 CLI_COMMAND(syslog) {

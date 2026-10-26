@@ -30,7 +30,12 @@
 #include <IRutils.h>
 
 #include "common.hpp"
-#include "stringRingBuffer.hpp"
+#include "eventlog.hpp"
+
+/**
+ * @brief Size of the transmission and the reception log in bytes each.
+ */
+#define IRCONTROL_LOG_SIZE              2048
 
 /**
  * @brief Class to handle IR control functionality.
@@ -44,9 +49,8 @@ class IRControl {
          * Constructor
          * @param txPin Pin for IR transmission, default is IRTX_PIN.
          * @param rxPin Pin for IR reception, default is IRRX_PIN.
-         * @param logSize Size of the transmission and reception logs, default is 30.
          */
-        IRControl(uint8_t txPin = IRTX_PIN, uint8_t rxPin = IRRX_PIN, uint8_t logSize = 30);
+        IRControl(uint8_t txPin = IRTX_PIN, uint8_t rxPin = IRRX_PIN);
         
         /**
          * @brief Initialize the IR control.
@@ -110,15 +114,15 @@ class IRControl {
         
         /**
          * @brief Get the transmission log.
-         * @return A string containing the transmission log.
+         * @return The log of the transmitted IR signals.
          */
-        String getTxLog(void) const;
-        
+        EventLog &getTxLog(void);
+
         /**
          * @brief Get the reception log.
-         * @return A string containing the reception log.
+         * @return The log of the received IR signals.
          */
-        String getRxLog(void) const;
+        EventLog &getRxLog(void);
 
     private:
         
@@ -138,14 +142,24 @@ class IRControl {
         decode_results irRxData;
         
         /**
-         * Last transmission log.
+         * Memory of the transmission log.
          */
-        StringRingBuffer lastTx;
-        
+        char txLogData[IRCONTROL_LOG_SIZE];
+
         /**
-         * Last reception log.
+         * Memory of the reception log.
          */
-        StringRingBuffer lastRx;
+        char rxLogData[IRCONTROL_LOG_SIZE];
+
+        /**
+         * Transmission log.
+         */
+        EventLog txLog;
+
+        /**
+         * Reception log.
+         */
+        EventLog rxLog;
         
         /**
          * Number of transmitted IR signals.

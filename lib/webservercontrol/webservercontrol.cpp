@@ -306,13 +306,18 @@ void WebServerControl::handleReset() {
 }
 
 void WebServerControl::handleTxLog() {
-    String data = irControl.getTxLog();
-    Server.send(200, "text/plain", data);   
+    sendEventLog(irControl.getTxLog());
 }
 
 void WebServerControl::handleRxLog() {
-    String data = irControl.getRxLog();
-    Server.send(200, "text/plain", data);
+    sendEventLog(irControl.getRxLog());
+}
+
+void WebServerControl::sendEventLog(const EventLog &log) {
+    /* Written directly to the client like the system log */
+    Server.setContentLength(log.getLength());
+    Server.send(200, "text/plain", "");
+    log.printTo(Server.client());
 }
 
 void WebServerControl::handleSysLog() {
