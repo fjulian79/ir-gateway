@@ -36,6 +36,7 @@
 #include "otacontrol.hpp"
 #include "healthcontrol.hpp"
 #include "syslog.hpp"
+#include "timestamp.hpp"
 
 UpTime upTime;
 /* Not initialized on startup, so the log is kept across resets */
@@ -404,7 +405,9 @@ void setup(void) {
 
     esp_reset_reason_t reset = esp_reset_reason();
     sysLog.begin(reset != ESP_RST_POWERON && reset != ESP_RST_BROWNOUT);
+    sysLog.setTimeStamp(timeStampSystem);
     sysLog.notice("--- Boot --- %s %s", VERSION_PROJECT, VERSION_GIT_SHORT);
+
     if (!param_valid) {
         sysLog.warning("Parameter: Invalid, using defaults");
     }

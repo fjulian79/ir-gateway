@@ -20,14 +20,19 @@
  */
 
 #include "syslog.hpp"
+#include "boundedwriter.hpp"
 #include <stdarg.h>
-#include <sys/time.h>
-#include <time.h>
 
 /**
- * @brief Size of a stored line, the timestamp, the severity and the message.
+ * @brief Width of the severity column, the length of the longest name.
  */
-#define SYSLOG_ENTRY_SIZE               (SYSLOG_LINE_MAX + 32)
+#define SYSLOG_SEVERITY_WIDTH           7
+
+/**
+ * @brief Size of a stored line, the timestamp, the severity, the separators
+ * and the message.
+ */
+#define SYSLOG_ENTRY_SIZE               (SYSLOG_TIMESTAMP_MAX + 1 + SYSLOG_SEVERITY_WIDTH + 1 + SYSLOG_LINE_MAX)
 
 /**
  * @brief Marks the memory as valid, e.g. it is random after power on.
@@ -37,6 +42,7 @@
 SysLog::SysLog() :
       Header(nullptr)
     , Lines()
+    , TimeStampFmtCb(nullptr)
     , Console(&Serial)
     , LogLevel(Info)
     , ConsoleLevel(Err)
@@ -47,6 +53,7 @@ SysLog::SysLog() :
 SysLog::SysLog(SysLogHeader_t *header, char *data, size_t size) :
       Header(header)
     , Lines(data, size)
+    , TimeStampFmtCb(nullptr)
     , Console(&Serial)
     , LogLevel(Info)
     , ConsoleLevel(Err)
@@ -94,6 +101,10 @@ void SysLog::setConsole(Print *console) {
     Console = console;
 }
 
+void SysLog::setTimeStamp(TimeStampFunc timeStamp) {
+    TimeStampFmtCb = timeStamp;
+}
+
 void SysLog::setLogLevel(Severity level) {
     LogLevel = level > Debug ? Debug : level;
     if (ConsoleLevel > LogLevel) {
@@ -126,30 +137,24 @@ const char *SysLog::getSeverityName(Severity severity) {
 
 void SysLog::vlog(Severity severity, const char *format, va_list args) {
     char entry[SYSLOG_ENTRY_SIZE];
-    struct timeval tv;
-    struct tm timeinfo;
-    size_t len;
+    size_t len = 0;
     int ret;
 
-    /* Do not wait for the time as this would add a blocking delay when ntp
-     * is not yet synchronized. This would be fatal for logging! The system
-     * time does not wait, it counts from 1970-01-01 on boot until it is set.
-     */
-    gettimeofday(&tv, nullptr);
-    gmtime_r(&tv.tv_sec, &timeinfo);
-
-#if SYSLOG_LOCALTIME
-    /* Like getLocalTime() a year before 2016 is treated as not set. The time
-     * since boot stays in UTC, the time zone might be set before the time */
-    if (timeinfo.tm_year > (2016 - 1900)) {
-        localtime_r(&tv.tv_sec, &timeinfo);
+    if (TimeStampFmtCb != nullptr) {
+        /* Set up the bounded writer for the timestamp to the temporary buffer */
+        BoundedWriter out(entry, SYSLOG_TIMESTAMP_MAX + 1);
+        /* Let the calback print the timestamp by using the bounded writer */
+        TimeStampFmtCb(out);
+        /* Get the length of the timestamp written by the callback */
+        len = out.length();
+        if (len > 0) {
+            entry[len++] = ' ';
+        }
     }
-#endif
 
-    len = snprintf(entry, sizeof(entry), "%04d-%02d-%02d %02d:%02d:%02d.%03lu %-7s ",
-        timeinfo.tm_year + 1900, timeinfo.tm_mon + 1, timeinfo.tm_mday,
-        timeinfo.tm_hour, timeinfo.tm_min, timeinfo.tm_sec,
-        (unsigned long) (tv.tv_usec / 1000), getSeverityName(severity));
+    /* Write the severity after the timestamp while adding padding */
+    len += snprintf(entry + len, sizeof(entry) - len, "%-*s ", SYSLOG_SEVERITY_WIDTH,
+        getSeverityName(severity));
 
     /* The message is limited to SYSLOG_LINE_MAX, the rest of the entry is
      * reserved for the timestamp and the severity */

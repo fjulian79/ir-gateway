@@ -30,14 +30,18 @@
  */
 #define SYSLOG_LINE_MAX                 128
 
-#ifndef SYSLOG_LOCALTIME
 /**
- * @brief Set to 0 if the local time is never available, e.g. on a device
- * without network. The timestamp is always the time since boot then and the
- * time zone handling of the C library is not needed.
+ * @brief Maximum length of the timestamp, longer ones are truncated.
+ * 
+ * This is a maximum limit, not a fixed width. Only the actual length of the 
+ * timestamp is used and stored, followed by a space and the severity, shorter 
+ * ones are not padded. Standard time stamps (yyyy-MM-DD hh:mm:ss.ms) need 23 
+ * characters, the rest is left for own formats, e.g. with a time zone.
+ * 
+ * To keep the columns of the log aligned, a timestamp function should always
+ * print the same number of characters.
  */
-#define SYSLOG_LOCALTIME                1
-#endif
+#define SYSLOG_TIMESTAMP_MAX            32
 
 /**
  * @brief Management data of a SysLog, stored in front of the lines.
@@ -65,9 +69,9 @@ template <size_t N> struct SysLogMemory {
  *
  *  2026-10-26 18:02:11.417 warning WiFi: Connection lost
  *
- * The timestamp is taken from the system time, which starts at 1970-01-01 on
- * boot, so it is the time since boot until the time has been set, e.g. by
- * ntp. The local time is used from then on, see SYSLOG_LOCALTIME.
+ * The timestamp is printed by a function set by setTimeStamp(), see
+ * TimeStampFunc. Without one, or if it prints nothing, the lines start
+ * directly with the severity, without a leading space.
  *
  * The severities are the ones of syslog. Messages up to the log level are
  * stored, the ones up to the console level are printed to the console as
@@ -84,6 +88,7 @@ template <size_t N> struct SysLogMemory {
  *  SysLog sysLog(logMemory);
  *  ...
  *  sysLog.begin(esp_reset_reason() != ESP_RST_POWERON);
+ *  sysLog.setTimeStamp(timeStampSystem);
  *
  * Not safe for concurrent use, only use it from the loop task. E.g. callbacks
  * of the WiFi stack or sntp run in other tasks.
@@ -106,6 +111,21 @@ class SysLog {
             Info,
             Debug
         } Severity;
+
+        /**
+         * @brief A function printing the timestamp of a line.
+         * The timestamp is printed without a separator at the end, SysLog
+         * adds it. Output exceeding SYSLOG_TIMESTAMP_MAX is dropped, the
+         * function can not write behind the space of the timestamp. E.g. the
+         * functions of timestamp.hpp, or a lambda without capture:
+         *
+         *  sysLog.setTimeStamp([](Print &out) {
+         *      out.print(millis());
+         *  });
+         *
+         * @param out Where to print the timestamp to.
+         */
+        typedef void (*TimeStampFunc)(Print &out);
 
         /**
          * @brief Constructor for SysLog without memory.
@@ -149,6 +169,13 @@ class SysLog {
          *        level, nullptr for none.
          */
         void setConsole(Print *console);
+
+        /**
+         * @brief Set the function printing the timestamp of each line.
+         * @param timeStamp The function, see TimeStampFunc, nullptr for no
+         *        timestamp, the default.
+         */
+        void setTimeStamp(TimeStampFunc timeStamp);
 
         /**
          * @brief Set the log level, Info by default.
@@ -243,6 +270,11 @@ class SysLog {
          * @brief The buffer holding the lines.
          */
         LineRingBuffer Lines;
+
+        /**
+         * @brief The function printing the timestamp, nullptr for none.
+         */
+        TimeStampFunc TimeStampFmtCb;
 
         /**
          * @brief Where to print the messages up to the console level.
