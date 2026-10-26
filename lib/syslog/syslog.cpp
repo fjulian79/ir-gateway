@@ -27,15 +27,59 @@
  */
 #define SYSLOG_ENTRY_SIZE               (SYSLOG_LINE_MAX + 24)
 
-static char logData[SYSLOG_SIZE];
-
-SysLog sysLog;
+/**
+ * @brief Marks the memory as valid, e.g. it is random after power on.
+ */
+#define SYSLOG_MAGIC                    0x534C4F47u
 
 SysLog::SysLog() :
-      Lines(logData, sizeof(logData))
+      Header(nullptr)
+    , Lines()
     , LineLen(0)
 {
 
+}
+
+SysLog::SysLog(SysLogHeader_t *header, char *data, size_t size) :
+      Header(header)
+    , Lines(data, size)
+    , LineLen(0)
+{
+
+}
+
+void SysLog::begin(bool restore) {
+    if (Header == nullptr) {
+        return;
+    }
+
+    /* The header is kept with the lines, so a new firmware either finds all
+     * of it or none of it at the same place, the size has to match as well */
+    if (!restore || Header->magic != SYSLOG_MAGIC || Header->size != Lines.getSize()
+            || !Lines.setState(Header->state) || !isValid()) {
+        Lines.clear();
+        Header->magic = SYSLOG_MAGIC;
+        Header->size = Lines.getSize();
+        Header->state = Lines.getState();
+    }
+}
+
+bool SysLog::isValid() const {
+    char entry[SYSLOG_ENTRY_SIZE];
+    size_t sum = 0;
+    size_t len;
+
+    /* A reset while appending a line might leave a line without terminator or
+     * longer than an entry, printTo() and getLength() depend on both */
+    for (size_t pos = Lines.first(); pos != LineRingBuffer::npos; pos = Lines.next(pos)) {
+        len = Lines.read(pos, entry, sizeof(entry));
+        if (len == 0) {
+            return false;
+        }
+        sum += len + 1;
+    }
+
+    return sum == Lines.getUsed();
 }
 
 size_t SysLog::write(uint8_t c) {
@@ -82,7 +126,10 @@ void SysLog::flushLine() {
     entry[len] = 0;
     LineLen = 0;
 
-    Lines.append(entry, len);
+    if (Header != nullptr) {
+        Lines.append(entry, len);
+        Header->state = Lines.getState();
+    }
     Serial.println(entry);
 }
 

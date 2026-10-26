@@ -25,15 +25,29 @@
 #include <generic/lineringbuffer.hpp>
 
 /**
- * @brief Size of the log buffer in bytes.
- */
-#define SYSLOG_SIZE                     (8 * 1024)
-
-/**
  * @brief Maximum length of a line without the timestamp, longer lines are
  * split.
  */
 #define SYSLOG_LINE_MAX                 128
+
+/**
+ * @brief Management data of a SysLog, stored in front of the lines.
+ */
+typedef struct {
+    uint32_t magic;
+    uint32_t size;
+    RingBuffer::State state;
+} SysLogHeader_t;
+
+/**
+ * @brief The memory of a SysLog, the management data and the lines.
+ * Created by the user, which decides about the size and where it is placed.
+ * @tparam N The size of the lines in bytes.
+ */
+template <size_t N> struct SysLogMemory {
+    SysLogHeader_t header;
+    char data[N];
+};
 
 /**
  * @brief System log class.
@@ -41,6 +55,14 @@
  * keeps the most recent lines in a buffer. Each line is printed to Serial as
  * well. The timestamp is the local time once it has been synchronized, the
  * up time before.
+ *
+ * To keep the lines across a reset, place the memory where it is not
+ * initialized on startup and restore it by begin():
+ *
+ *  __NOINIT_ATTR static SysLogMemory<8 * 1024> logMemory;
+ *  SysLog sysLog(logMemory);
+ *  ...
+ *  sysLog.begin(esp_reset_reason() != ESP_RST_POWERON);
  *
  * Not safe for concurrent use, only use it from the loop task. E.g. callbacks
  * of the WiFi stack or sntp run in other tasks.
@@ -50,9 +72,39 @@ class SysLog : public Print {
     public:
 
         /**
-         * @brief Constructor for SysLog.
+         * @brief Constructor for SysLog without memory.
+         * The lines are only printed to Serial with a timestamp, but not
+         * stored.
          */
         SysLog();
+
+        /**
+         * @brief Constructor for SysLog.
+         * @param memory The memory to use, see SysLogMemory.
+         */
+        template <size_t N> SysLog(SysLogMemory<N> &memory) :
+            SysLog(&memory.header, memory.data, N)
+        {
+
+        }
+
+        /**
+         * @brief Constructor for SysLog.
+         * @param header The management data.
+         * @param data The memory of the lines.
+         * @param size The size of data in bytes.
+         */
+        SysLog(SysLogHeader_t *header, char *data, size_t size);
+
+        /**
+         * @brief Restore the lines of the last boot, if requested and valid,
+         * clear them otherwise.
+         * Has to be called before anything is logged.
+         * @param restore true to keep the lines found in the memory, e.g.
+         *        after a reset. The memory content is checked, so random
+         *        content after a power on is detected as well.
+         */
+        void begin(bool restore);
 
         /**
          * @brief Write a single character, see Print.
@@ -92,6 +144,18 @@ class SysLog : public Print {
         void flushLine();
 
         /**
+         * @brief Check the restored lines.
+         * @return true if all lines are terminated and fit into an entry.
+         */
+        bool isValid() const;
+
+        /**
+         * @brief The management data, stored with the lines, nullptr if
+         * there is no memory.
+         */
+        SysLogHeader_t *Header;
+
+        /**
          * @brief The buffer holding the lines.
          */
         LineRingBuffer Lines;
@@ -109,6 +173,6 @@ class SysLog : public Print {
 };
 
 /**
- * @brief The system log of the device.
+ * @brief The system log of the device, defined in main.cpp.
  */
 extern SysLog sysLog;

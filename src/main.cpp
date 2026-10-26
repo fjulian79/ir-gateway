@@ -37,6 +37,9 @@
 #include "healthcontrol.hpp"
 #include "syslog.hpp"
 
+/* Not initialized on startup, so the log is kept across resets */
+__NOINIT_ATTR static SysLogMemory<8 * 1024> sysLogMemory;
+SysLog sysLog(sysLogMemory);
 Task networkTask(30000);
 Cli cli;
 UpTime upTime;
@@ -382,6 +385,9 @@ void setup(void) {
     Serial.begin(115200);
     Serial.println();
     cmd_ver(Serial, 0, 0);
+    esp_reset_reason_t reset = esp_reset_reason();
+    sysLog.begin(reset != ESP_RST_POWERON && reset != ESP_RST_BROWNOUT);
+    sysLog.printf("--- Boot, %s %s\n", VERSION_PROJECT, VERSION_GIT_SHORT);
 
     if(Parameter.begin() != true) {
         sysLog.printf("Parameter: Invalid, using defaults\n");
