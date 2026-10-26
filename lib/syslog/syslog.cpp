@@ -20,12 +20,14 @@
  */
 
 #include "syslog.hpp"
-#include <esp_timer.h>
+#include <stdarg.h>
+#include <sys/time.h>
+#include <time.h>
 
 /**
- * @brief Size of a stored line, the timestamp and the line.
+ * @brief Size of a stored line, the timestamp, the severity and the message.
  */
-#define SYSLOG_ENTRY_SIZE               (SYSLOG_LINE_MAX + 24)
+#define SYSLOG_ENTRY_SIZE               (SYSLOG_LINE_MAX + 32)
 
 /**
  * @brief Marks the memory as valid, e.g. it is random after power on.
@@ -35,7 +37,9 @@
 SysLog::SysLog() :
       Header(nullptr)
     , Lines()
-    , LineLen(0)
+    , Console(&Serial)
+    , LogLevel(Info)
+    , ConsoleLevel(Err)
 {
 
 }
@@ -43,12 +47,16 @@ SysLog::SysLog() :
 SysLog::SysLog(SysLogHeader_t *header, char *data, size_t size) :
       Header(header)
     , Lines(data, size)
-    , LineLen(0)
+    , Console(&Serial)
+    , LogLevel(Info)
+    , ConsoleLevel(Err)
 {
 
 }
 
-void SysLog::begin(bool restore) {
+void SysLog::begin(bool restore, Print *console) {
+    Console = console;
+
     if (Header == nullptr) {
         return;
     }
@@ -82,56 +90,116 @@ bool SysLog::isValid() const {
     return sum == Lines.getUsed();
 }
 
-size_t SysLog::write(uint8_t c) {
-    if (c == '\n') {
-        flushLine();
-    } else if (c != '\r' && c != '\0') {
-        if (LineLen == sizeof(Line) - 1) {
-            flushLine();
-        }
-        Line[LineLen++] = c;
-    }
-
-    return 1;
+void SysLog::setConsole(Print *console) {
+    Console = console;
 }
 
-size_t SysLog::write(const uint8_t *buffer, size_t size) {
-    for (size_t i = 0; i < size; i++) {
-        write(buffer[i]);
+void SysLog::setLogLevel(Severity level) {
+    LogLevel = level > Debug ? Debug : level;
+    if (ConsoleLevel > LogLevel) {
+        ConsoleLevel = LogLevel;
     }
-
-    return size;
 }
 
-void SysLog::flushLine() {
+SysLog::Severity SysLog::getLogLevel() const {
+    return LogLevel;
+}
+
+void SysLog::setConsoleLevel(Severity level) {
+    ConsoleLevel = level > Debug ? Debug : level;
+    if (LogLevel < ConsoleLevel) {
+        LogLevel = ConsoleLevel;
+    }
+}
+
+SysLog::Severity SysLog::getConsoleLevel() const {
+    return ConsoleLevel;
+}
+
+const char *SysLog::getSeverityName(Severity severity) {
+    static const char *const names[] = {
+        "emerg", "alert", "crit", "err", "warning", "notice", "info", "debug"
+    };
+
+    return severity <= Debug ? names[severity] : "?";
+}
+
+void SysLog::vlog(Severity severity, const char *format, va_list args) {
     char entry[SYSLOG_ENTRY_SIZE];
+    struct timeval tv;
     struct tm timeinfo;
     size_t len;
+    int ret;
 
     /* Do not wait for the time as this would add a blocking delay when ntp
-     * is not yet synchronized. This would be fatal for logging!
-     * If we dont have ntp time, we fall back to using the system uptime.
+     * is not yet synchronized. This would be fatal for logging! The system
+     * time does not wait, it counts from 1970-01-01 on boot until it is set.
      */
-    if (getLocalTime(&timeinfo, 0)) {
-        len = strftime(entry, sizeof(entry), "%Y-%m-%d %H:%M:%S ", &timeinfo);
-    } else {
-        /* 64 bit as millis() wraps after 49 days */
-        uint32_t s = esp_timer_get_time() / 1000000;
-        len = snprintf(entry, sizeof(entry), "%3lud %02lu:%02lu:%02lu ", (unsigned long) (s / 86400),
-            (unsigned long) (s / 3600 % 24), (unsigned long) (s / 60 % 60), (unsigned long) (s % 60));
+    gettimeofday(&tv, nullptr);
+    gmtime_r(&tv.tv_sec, &timeinfo);
+
+#if SYSLOG_LOCALTIME
+    /* Like getLocalTime() a year before 2016 is treated as not set. The time
+     * since boot stays in UTC, the time zone might be set before the time */
+    if (timeinfo.tm_year > (2016 - 1900)) {
+        localtime_r(&tv.tv_sec, &timeinfo);
+    }
+#endif
+
+    len = snprintf(entry, sizeof(entry), "%04d-%02d-%02d %02d:%02d:%02d.%03lu %-7s ",
+        timeinfo.tm_year + 1900, timeinfo.tm_mon + 1, timeinfo.tm_mday,
+        timeinfo.tm_hour, timeinfo.tm_min, timeinfo.tm_sec,
+        (unsigned long) (tv.tv_usec / 1000), getSeverityName(severity));
+
+    /* The message is limited to SYSLOG_LINE_MAX, the rest of the entry is
+     * reserved for the timestamp and the severity */
+    ret = vsnprintf(entry + len, SYSLOG_LINE_MAX, format, args);
+    if (ret > 0) {
+        len += (size_t) ret < SYSLOG_LINE_MAX ? (size_t) ret : SYSLOG_LINE_MAX - 1;
     }
 
-    memcpy(entry + len, Line, LineLen);
-    len += LineLen;
-    entry[len] = 0;
-    LineLen = 0;
+    /* A newline at the end is not needed, but tolerated */
+    while (entry[len - 1] == '\n' || entry[len - 1] == '\r') {
+        entry[--len] = 0;
+    }
 
-    if (Header != nullptr) {
+    /* Formatted in any case to keep the timing independent of the levels */
+    if (severity <= LogLevel && Header != nullptr) {
         Lines.append(entry, len);
         Header->state = Lines.getState();
     }
-    Serial.println(entry);
+
+    if (severity <= ConsoleLevel && Console != nullptr) {
+        /* No println(), its \r\n shows an empty line with monitor_eol = CR */
+        Console->print(entry);
+        Console->print('\n');
+    }
 }
+
+void SysLog::log(Severity severity, const char *format, ...) {
+    va_list args;
+
+    va_start(args, format);
+    vlog(severity, format, args);
+    va_end(args);
+}
+
+#define SYSLOG_SEVERITY_FUNCTION(_name_, _severity_)            \
+    void SysLog::_name_(const char *format, ...) {              \
+        va_list args;                                           \
+        va_start(args, format);                                 \
+        vlog(_severity_, format, args);                         \
+        va_end(args);                                           \
+    }
+
+SYSLOG_SEVERITY_FUNCTION(emerg, Emerg)
+SYSLOG_SEVERITY_FUNCTION(alert, Alert)
+SYSLOG_SEVERITY_FUNCTION(crit, Crit)
+SYSLOG_SEVERITY_FUNCTION(err, Err)
+SYSLOG_SEVERITY_FUNCTION(warning, Warning)
+SYSLOG_SEVERITY_FUNCTION(notice, Notice)
+SYSLOG_SEVERITY_FUNCTION(info, Info)
+SYSLOG_SEVERITY_FUNCTION(debug, Debug)
 
 void SysLog::printTo(Print &out) const {
     char entry[SYSLOG_ENTRY_SIZE];

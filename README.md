@@ -13,6 +13,7 @@ IR Gateway is an ESP32-based infrared remote control gateway designed to automat
 - **Sequence Support**: Execute multiple IR commands in sequence with configurable delays
 - **WiFi Connectivity**: Connect to your home network with DHCP or static IP configuration
 - **Logging**: Track transmission and reception history with configurable log sizes
+- **System Log**: Timestamped system events with syslog severities, kept across resets
 - **mDNS**: Easy discovery via hostname resolution (e.g., `ir-gateway.local`)
 - **NTP Time Sync**: Automatic time synchronization for accurate logging
 - **OTA Updates**: Password protected firmware updates via network, signed images only
@@ -66,6 +67,10 @@ pio run -t upload
 ```bash
 pio device monitor
 ```
+
+To decode the backtrace of a crash, add `esp32_exception_decoder` to
+`monitor_filters` in `platformio.ini`. It is disabled by default, as it
+buffers the output line by line and delays the echo of the CLI.
 
 ### OTA Updates
 
@@ -161,6 +166,26 @@ Format: `type:code:repeat:pause,type:code:repeat:pause,...`
 #### Logs
 - `GET /txlog`: View transmission log
 - `GET /rxlog`: View reception log
+- `GET /syslog`: View system log
+
+#### System
+- `POST /reset`: Restart the device, e.g. `curl -X POST http://ir-gateway.local/reset`
+
+### System Log
+
+Events like WiFi connects, NTP synchronization, OTA updates and restarts are
+logged with a timestamp and a severity as known from syslog:
+
+```
+1970-01-01 00:00:00.064 notice  --- Boot, ir-gateway v1.4.0
+1970-01-01 00:00:01.250 info    WiFi: Connected, 192.168.1.100 (1089ms)
+2026-10-26 16:35:32.417 info    NTP: Time synchronized, up time 0 days, 00:00:02.310
+```
+
+Until NTP is synchronized the timestamp is the time since boot, starting at
+1970-01-01. The log is kept across resets, e.g. by the watchdog, but not
+across a power cycle. Only errors are printed to the serial console, view the
+whole log by the `syslog` command or at `/syslog`.
 
 ### Command Line Interface
 
@@ -172,6 +197,7 @@ info                            # Display system information
 tx nec 0x1234 1                 # Transmit IR code
 txlog                           # Show transmission log
 rxlog                           # Show reception log
+syslog                          # Show system log
 networking 1                    # Enable/disable networking
 reset                           # Restart device
 help                            # Show all commands
@@ -246,9 +272,12 @@ ir-gateway/
 │   └── main.cpp              # Main application
 ├── lib/
 │   ├── common/               # Common utilities
+│   ├── healthcontrol/        # Watchdog, health checks and restarts
 │   ├── ircontrol/            # IR transmission/reception
+│   ├── otacontrol/           # OTA firmware updates
 │   ├── parameter/            # Configuration management
 │   ├── stringRingBuffer/     # Circular string buffer
+│   ├── syslog/               # System log
 │   └── webservercontrol/     # Web server handling
 └── README.md
 ```
@@ -267,7 +296,7 @@ ir-gateway/
 - Use `rxlog` to verify reception is working
 
 ### Web Interface Not Accessible
-- Confirm device is connected to WiFi (check serial output)
+- Confirm device is connected to WiFi (check `syslog` via the serial console)
 - Try IP address instead of hostname
 - Verify firewall settings
 - Check if mDNS is working on your network

@@ -55,7 +55,7 @@ void OtaControl::begin(const char *hostname) {
 #endif
 
     ArduinoOTA.onStart([]() {
-        sysLog.printf("OTA: Update started\n");
+        sysLog.notice("OTA: Update started");
     });
     ArduinoOTA.onProgress([](unsigned int progress, unsigned int total) {
         static uint8_t last = 0;
@@ -68,15 +68,15 @@ void OtaControl::begin(const char *hostname) {
         last = percent;
     });
     ArduinoOTA.onEnd([]() {
-        sysLog.printf("OTA: Update done, rebooting ...\n");
+        sysLog.notice("OTA: Update done, rebooting ...");
     });
     ArduinoOTA.onError([](ota_error_t error) {
-        sysLog.printf("OTA: Error %u\n", error);
+        sysLog.err("OTA: Error %u", error);
     });
 
     ArduinoOTA.begin();
     Enabled = true;
-    sysLog.printf("OTA: Ready, %s, %s\n",
+    sysLog.info("OTA: Ready, %s, %s",
         isPasswordSet() ? "password protected" : "no password",
         SignatureRequired ? "signed images only" : "unsigned images accepted");
 }

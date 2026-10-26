@@ -3,6 +3,18 @@
 All notable changes to this project will be documented in this file.
 The format is based on Keep a Changelog.
 
+## [v1.4.0] - 2026-10-26
+### Added
+- Added a system log with timestamps and syslog severities, shown by the `syslog` command and at `/syslog`. It is kept across resets, e.g. by the watchdog, and marks each boot with the firmware version.
+- Added the up time to the NTP synchronization message.
+### Changed
+- The messages of WiFi, NTP, mDNS, OTA, health and the web server are written to the system log. Only errors are printed to the serial console, the prompt of the CLI is shown after the startup messages.
+- The web server is started with the other network services on the first WiFi connect.
+- Disabled the `esp32_exception_decoder` monitor filter by default, as it delays the echo of the CLI.
+- Updated to `libgeneric` v2.1.0 from the PlatformIO registry and `libparam` v1.2.0, pinned to its tag.
+### Fixed
+- Fixed a crash on boot without WiFi configured, e.g. on a new device.
+
 ## [v1.3.0] - 2026-10-25
 ### Added
 - Added OTA firmware updates via network (`pio run -e nodemcu-32s-ota -t upload`), protected by a password and accepting signed firmware images only. Password and signing key are created in `secrets/` on the first build.

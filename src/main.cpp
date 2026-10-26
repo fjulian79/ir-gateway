@@ -37,12 +37,12 @@
 #include "healthcontrol.hpp"
 #include "syslog.hpp"
 
+UpTime upTime;
 /* Not initialized on startup, so the log is kept across resets */
 __NOINIT_ATTR static SysLogMemory<8 * 1024> sysLogMemory;
 SysLog sysLog(sysLogMemory);
 Task networkTask(30000);
 Cli cli;
-UpTime upTime;
 IRControl irControl;
 WebServerControl webServerControl;
 OtaControl otaControl;
@@ -225,16 +225,16 @@ CLI_COMMAND(syslog) {
 
 bool setup_mdns(void) {
     if (!MDNS.begin(Parameter.data.ip.hostname)) {
-        sysLog.printf("mDNS: Failed to start\n");
+        sysLog.err("mDNS: Failed to start");
         return false;
     }
 
     if (!MDNS.addService("http", "tcp", webServerControl.getPort())) {
-        sysLog.printf("mDNS: Failed to add http service\n");
+        sysLog.err("mDNS: Failed to add http service");
         return false;
     }
 
-    sysLog.printf("mDNS: Started as %s.local\n", Parameter.data.ip.hostname);
+    sysLog.info("mDNS: Started as %s.local", Parameter.data.ip.hostname);
     return true;
 }
 
@@ -248,7 +248,7 @@ bool setup_ntp(void) {
         ntp_last_sync = tv->tv_sec;
     });
     configTzTime(Parameter.data.ntp.timezone, Parameter.data.ntp.server, server2);
-    sysLog.printf("NTP: Started, server %s%s%s\n", Parameter.data.ntp.server,
+    sysLog.info("NTP: Started, server %s%s%s", Parameter.data.ntp.server,
         server2 ? ", fallback " : "", server2 ? server2 : "");
 
     return true;
@@ -265,7 +265,8 @@ void handle_ntp(uint32_t now) {
     bool synced = ntp_last_sync != 0 && (time(nullptr) - ntp_last_sync) < NTP_MAX_SYNC_AGE_S;
 
     if (ntp_last_sync != 0 && !ntp_first_sync_logged) {
-        sysLog.printf("NTP: Time synchronized\n");
+        /* The up time, as the timestamps jump from the time since boot */
+        sysLog.info("NTP: Time synchronized (up time %s)", upTime.toString().c_str());
         ntp_first_sync_logged = true;
     }
 
@@ -275,7 +276,7 @@ void handle_ntp(uint32_t now) {
 
     if (synced) {
         if (ntp_recovery_step != 0) {
-            sysLog.printf("NTP: Recovered after %u attempts\n", ntp_recovery_step);
+            sysLog.notice("NTP: Recovered after %u attempts", ntp_recovery_step);
             ntp_recovery_step = 0;
         }
         ntp_recovery_last = now;
@@ -289,10 +290,10 @@ void handle_ntp(uint32_t now) {
     ntp_recovery_last = now;
     ntp_recovery_count++;
     if (ntp_recovery_step % 2 == 0) {
-        sysLog.printf("NTP: No synchronization, restarting NTP client\n");
+        sysLog.warning("NTP: No synchronization, restarting NTP client");
         setup_ntp();
     } else {
-        sysLog.printf("NTP: Still no synchronization, reconnecting WiFi\n");
+        sysLog.warning("NTP: Still no synchronization, reconnecting WiFi");
         WiFi.reconnect();
     }
     ntp_recovery_step++;
@@ -305,7 +306,7 @@ void handle_ntp(uint32_t now) {
  */
 bool setup_wifi(void) {
     WIFILED_OFF;
-    sysLog.printf("WiFi: Connecting to %s\n", Parameter.data.wifi.ssid);
+    sysLog.info("WiFi: Connecting to %s", Parameter.data.wifi.ssid);
     WiFi.setHostname(Parameter.data.ip.hostname);
     WiFi.mode(WIFI_STA);
     /* Power save delays incoming requests by up to the beacon interval */
@@ -321,7 +322,7 @@ bool setup_wifi(void) {
         dns2 = gateway; 
 
         if (!WiFi.config(ipaddr, gateway, netmask, dns1, dns2)) {
-            sysLog.printf("WiFi: Failed to configure the static IP\n");
+            sysLog.err("WiFi: Failed to configure the static IP");
             return false;
         }
     }
@@ -343,7 +344,8 @@ void handle_wifi(uint32_t now) {
     if (connected == wifi_connected) {
         /* Fallback in case the WiFi stack gave up reconnecting */
         if (!connected && networking_enabled && networkTask.isScheduled(now)) {
-            sysLog.printf("WiFi: Still not connected, retrying\n");
+            sysLog.warning("WiFi: Still not connected (%lums), retrying",
+                (unsigned long) (now - wifi_connect_start));
             WiFi.reconnect();
         }
         return;
@@ -352,15 +354,15 @@ void handle_wifi(uint32_t now) {
     wifi_connected = connected;
     if (!connected) {
         WIFILED_OFF;
-        sysLog.printf("WiFi: Connection lost\n");
+        sysLog.warning("WiFi: Connection lost");
         networkTask.setLastTick(now);
         wifi_connect_start = now;
         return;
     }
 
     WIFILED_ON;
-    sysLog.printf("WiFi: Connected, %s (%ums)\n", WiFi.localIP().toString().c_str(),
-        now - wifi_connect_start);
+    sysLog.info("WiFi: Connected, %s (%lums)", WiFi.localIP().toString().c_str(),
+        (unsigned long) (now - wifi_connect_start));
         
     /* Reset the NTP recovery timer on successful connection */
     ntp_recovery_last = now;
@@ -387,13 +389,24 @@ void setup(void) {
     Serial.begin(115200);
     Serial.println();
     cmd_ver(Serial, 0, 0);
+    Serial.printf("See syslog for a detailed boot log.\n");
+
+    upTime.begin();
+    bool param_valid = Parameter.begin();
+    if (!param_valid) {
+        param_clear();
+    }
+
+    /* The system time is kept across a software reset, so the time zone is
+     * needed before logging, not only once NTP is started */
+    setenv("TZ", Parameter.data.ntp.timezone, 1);
+    tzset();
+
     esp_reset_reason_t reset = esp_reset_reason();
     sysLog.begin(reset != ESP_RST_POWERON && reset != ESP_RST_BROWNOUT);
-    sysLog.printf("--- Boot, %s %s\n", VERSION_PROJECT, VERSION_GIT_SHORT);
-
-    if(Parameter.begin() != true) {
-        sysLog.printf("Parameter: Invalid, using defaults\n");
-        param_clear();
+    sysLog.notice("--- Boot --- %s %s", VERSION_PROJECT, VERSION_GIT_SHORT);
+    if (!param_valid) {
+        sysLog.warning("Parameter: Invalid, using defaults");
     }
 
     if (Parameter.data.wifi.ssid[0] != 0 && Parameter.data.wifi.pass[0] != 0) {
@@ -401,10 +414,11 @@ void setup(void) {
         setup_wifi();
     }
 
-    upTime.begin();
     irControl.begin();
-    cli.begin();
     healthControl.begin();
+
+    /* Initialize the command line interface as last step */
+    cli.begin();
 }
 
 void loop(void) {

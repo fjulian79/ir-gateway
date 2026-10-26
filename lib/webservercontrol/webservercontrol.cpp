@@ -52,7 +52,7 @@ void WebServerControl::begin() {
         setupRoutes();
         Server.begin();
         Enabled = true;
-        sysLog.printf("WebServer: Started on port %d\n", Port);
+        sysLog.info("WebServer: Started on port %d", Port);
     }
 }
 
@@ -60,7 +60,7 @@ void WebServerControl::stop() {
     if (Enabled) {
         Server.stop();
         Enabled = false;
-        sysLog.printf("WebServer: Stopped\n");
+        sysLog.info("WebServer: Stopped");
     }
 }
 
