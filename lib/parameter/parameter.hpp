@@ -59,7 +59,8 @@ extern Param<Parameter_t> Parameter;
  * @brief Clears the parameters and sets them to default values.
  * 
  * This function resets all parameters to their default values.
- * 
+ *
+ * @param ioStream The stream to report to, Serial by default.
  * @return int8_t Returns 0 on success.
  */
-int8_t param_clear(void);
+int8_t param_clear(Stream &ioStream = Serial);

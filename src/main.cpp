@@ -66,84 +66,84 @@ uint8_t ntp_recovery_step = 0;
 bool setup_wifi(void);
 
 CLI_COMMAND(ver) {
-    Serial.printf("\n%s\n", getVersionString().c_str());
+    ioStream.printf("\n%s\n", getVersionString().c_str());
     return 0;
 }
 
 CLI_COMMAND(info) {
-    Serial.printf("ESP32:\n");
-    Serial.printf("  Chip:          %s Rev %d\n", ESP.getChipModel(), ESP.getChipRevision());
-    Serial.printf("  CPU's:         %u @ %uMHz\n", ESP.getChipCores(), ESP.getCpuFreqMHz());
-    Serial.printf("  Flash:         %uMB, %uMhz, Mode 0x%0x\n", ESP.getFlashChipSize()/(1024*1024), ESP.getFlashChipSpeed()/1000000, ESP.getFlashChipMode());
-    Serial.printf("  PSRAM:         %u free of %u\n", ESP.getFreePsram(), ESP.getPsramSize());
-    Serial.printf("  Heap:          %u free of %u\n", ESP.getFreeHeap(), ESP.getHeapSize());
-    Serial.printf("  Heap min free: %u\n", ESP.getMinFreeHeap());
-    Serial.printf("  Heap max blk:  %u\n", ESP.getMaxAllocHeap());
-    Serial.printf("  MAC:           %s\n", WiFi.macAddress().c_str());
-    Serial.printf("  Reset reason:  %s%s%s\n", healthControl.getResetReason(),
+    ioStream.printf("ESP32:\n");
+    ioStream.printf("  Chip:          %s Rev %d\n", ESP.getChipModel(), ESP.getChipRevision());
+    ioStream.printf("  CPU's:         %u @ %uMHz\n", ESP.getChipCores(), ESP.getCpuFreqMHz());
+    ioStream.printf("  Flash:         %uMB, %uMhz, Mode 0x%0x\n", ESP.getFlashChipSize()/(1024*1024), ESP.getFlashChipSpeed()/1000000, ESP.getFlashChipMode());
+    ioStream.printf("  PSRAM:         %u free of %u\n", ESP.getFreePsram(), ESP.getPsramSize());
+    ioStream.printf("  Heap:          %u free of %u\n", ESP.getFreeHeap(), ESP.getHeapSize());
+    ioStream.printf("  Heap min free: %u\n", ESP.getMinFreeHeap());
+    ioStream.printf("  Heap max blk:  %u\n", ESP.getMaxAllocHeap());
+    ioStream.printf("  MAC:           %s\n", WiFi.macAddress().c_str());
+    ioStream.printf("  Reset reason:  %s%s%s\n", healthControl.getResetReason(),
         healthControl.getRestartReason()[0] ? ", " : "", healthControl.getRestartReason());
-    Serial.printf("  Resets:        %u since power on\n", healthControl.getResetCount());
-    Serial.printf("  Up time:       %s\n", upTime.toString().c_str());
-    Serial.printf("  Date:          %s\n", getTimeStamp().c_str());
-    Serial.printf("\n");
-    Serial.printf("Parameter:\n");
-    Serial.printf("  WiFi:\n");
-    Serial.printf("    SSID:        %s\n", Parameter.data.wifi.ssid);
-    Serial.printf("    Pass:        *****\n");
-    Serial.printf("  Network:\n");
-    Serial.printf("    Hostname:    %s\n", Parameter.data.ip.hostname);
-    Serial.printf("    DHCP:        %s\n", Parameter.data.ip.dhcp ? "true" : "false");
-    Serial.printf("    IP address:  %s\n", Parameter.data.ip.ipaddr);
-    Serial.printf("    Netmask:     %s\n", Parameter.data.ip.netmask);
-    Serial.printf("    Gateway:     %s\n", Parameter.data.ip.gateway);
-    Serial.printf("  NTP:\n");
-    Serial.printf("    Server:      %s\n", Parameter.data.ntp.server);
-    Serial.printf("    Timezone:    %s\n", Parameter.data.ntp.timezone);
-    Serial.printf("\n");
-    Serial.printf("IR:\n");
-    Serial.printf("  Tx Data:\n");
-    Serial.printf("    Count:       %u\n", irControl.getTxCount());
-    Serial.printf("    Last:        %s\n", irControl.getLastTx().c_str());
-    Serial.printf("  Rx Data:\n");
-    Serial.printf("    Count:       %u\n", irControl.getRxCount());
-    Serial.printf("    Last:        %s\n", irControl.getLastRx().c_str());
-    Serial.printf("\n");
-    Serial.printf("Network:\n");
-    Serial.printf("  WiFi Status:   %s\n", WiFi.isConnected() ? "Connected" : "Connecting ...");
-    Serial.printf("  WiFi IP:       %s\n", WiFi.localIP().toString().c_str());
-    Serial.printf("  WiFi RSSI:     %ddBm\n", WiFi.RSSI());
-    Serial.printf("  DNS:           %s\n", WiFi.dnsIP().toString().c_str());
-    Serial.printf("  NTP Sync:      %s, %u recovery attempts\n",
+    ioStream.printf("  Resets:        %u since power on\n", healthControl.getResetCount());
+    ioStream.printf("  Up time:       %s\n", upTime.toString().c_str());
+    ioStream.printf("  Date:          %s\n", getTimeStamp().c_str());
+    ioStream.printf("\n");
+    ioStream.printf("Parameter:\n");
+    ioStream.printf("  WiFi:\n");
+    ioStream.printf("    SSID:        %s\n", Parameter.data.wifi.ssid);
+    ioStream.printf("    Pass:        *****\n");
+    ioStream.printf("  Network:\n");
+    ioStream.printf("    Hostname:    %s\n", Parameter.data.ip.hostname);
+    ioStream.printf("    DHCP:        %s\n", Parameter.data.ip.dhcp ? "true" : "false");
+    ioStream.printf("    IP address:  %s\n", Parameter.data.ip.ipaddr);
+    ioStream.printf("    Netmask:     %s\n", Parameter.data.ip.netmask);
+    ioStream.printf("    Gateway:     %s\n", Parameter.data.ip.gateway);
+    ioStream.printf("  NTP:\n");
+    ioStream.printf("    Server:      %s\n", Parameter.data.ntp.server);
+    ioStream.printf("    Timezone:    %s\n", Parameter.data.ntp.timezone);
+    ioStream.printf("\n");
+    ioStream.printf("IR:\n");
+    ioStream.printf("  Tx Data:\n");
+    ioStream.printf("    Count:       %u\n", irControl.getTxCount());
+    ioStream.printf("    Last:        %s\n", irControl.getLastTx().c_str());
+    ioStream.printf("  Rx Data:\n");
+    ioStream.printf("    Count:       %u\n", irControl.getRxCount());
+    ioStream.printf("    Last:        %s\n", irControl.getLastRx().c_str());
+    ioStream.printf("\n");
+    ioStream.printf("Network:\n");
+    ioStream.printf("  WiFi Status:   %s\n", WiFi.isConnected() ? "Connected" : "Connecting ...");
+    ioStream.printf("  WiFi IP:       %s\n", WiFi.localIP().toString().c_str());
+    ioStream.printf("  WiFi RSSI:     %ddBm\n", WiFi.RSSI());
+    ioStream.printf("  DNS:           %s\n", WiFi.dnsIP().toString().c_str());
+    ioStream.printf("  NTP Sync:      %s, %u recovery attempts\n",
         ntp_last_sync ? getTimeStamp(ntp_last_sync).c_str() : "never", ntp_recovery_count);
-    Serial.printf("  Homepage:      http://%s.local\n", Parameter.data.ip.hostname);
-    Serial.printf("  OTA:           %s, %s, %s\n", otaControl.isEnabled() ? "Ready" : "Disabled",
+    ioStream.printf("  Homepage:      http://%s.local\n", Parameter.data.ip.hostname);
+    ioStream.printf("  OTA:           %s, %s, %s\n", otaControl.isEnabled() ? "Ready" : "Disabled",
         OtaControl::isPasswordSet() ? "password protected" : "no password",
         otaControl.isSignatureRequired() ? "signed images only" : "unsigned images accepted");
-    Serial.printf("\n");
+    ioStream.printf("\n");
     return 0;
 }
 
 CLI_COMMAND(help) {
-    Serial.printf("Supported commands:\n");
-    Serial.printf("  ver                            Prints version infos.\n");
-    Serial.printf("  info                           Prints system, parameter, IR and network\n");
-    Serial.printf("                                 status.\n");
-    Serial.printf("  param cmd ...                Parameter control, supported commands:\n");
-    Serial.printf("    clear                        Resets all values to default.\n");
-    Serial.printf("    write                        Paste all values at once to the terminal.\n");
-    Serial.printf("    set [name]                   Set a single value. use without a name to\n"); 
-    Serial.printf("                                 see the list of supported names.\n");
-    Serial.printf("    save                         Write the parameter values to the flash.\n");
-    Serial.printf("  networking [1/0/on/off]        Disables or Enables networking at all.\n");
-    Serial.printf("  reset                          Resets the CPU.\n");
-    Serial.printf("  tx [type] code [repeat]        Transmits a IR Code \n");
-    Serial.printf("                                 type .. optional, ir code, default = NEC\n");
-    Serial.printf("                                 code .. the code to send, hex or dec.\n");
-    Serial.printf("                                 repeat .. optional, number of Repetitions\n");
-    Serial.printf("  txlog                          Prints the log of transmitted IR codes.\n");
-    Serial.printf("  rxlog                          Prints the log of received IR codes.\n");
-    Serial.printf("  help                          Prints this text.\n"); 
-    Serial.printf("\n");
+    ioStream.printf("Supported commands:\n");
+    ioStream.printf("  ver                            Prints version infos.\n");
+    ioStream.printf("  info                           Prints system, parameter, IR and network\n");
+    ioStream.printf("                                 status.\n");
+    ioStream.printf("  param cmd ...                Parameter control, supported commands:\n");
+    ioStream.printf("    clear                        Resets all values to default.\n");
+    ioStream.printf("    write                        Paste all values at once to the terminal.\n");
+    ioStream.printf("    set [name]                   Set a single value. use without a name to\n"); 
+    ioStream.printf("                                 see the list of supported names.\n");
+    ioStream.printf("    save                         Write the parameter values to the flash.\n");
+    ioStream.printf("  networking [1/0/on/off]        Disables or Enables networking at all.\n");
+    ioStream.printf("  reset                          Resets the CPU.\n");
+    ioStream.printf("  tx [type] code [repeat]        Transmits a IR Code \n");
+    ioStream.printf("                                 type .. optional, ir code, default = NEC\n");
+    ioStream.printf("                                 code .. the code to send, hex or dec.\n");
+    ioStream.printf("                                 repeat .. optional, number of Repetitions\n");
+    ioStream.printf("  txlog                          Prints the log of transmitted IR codes.\n");
+    ioStream.printf("  rxlog                          Prints the log of received IR codes.\n");
+    ioStream.printf("  help                          Prints this text.\n"); 
+    ioStream.printf("\n");
     return 0;
 }
 
@@ -156,7 +156,7 @@ CLI_COMMAND(networking) {
     bool enable = false;
 
     if (argc != 1) {
-        Serial.printf("Error: Wrong number of arguments. Usage: networking [1/0/on/off]\n");
+        ioStream.printf("Error: Wrong number of arguments. Usage: networking [1/0/on/off]\n");
         return -1;
     }
 
@@ -165,22 +165,22 @@ CLI_COMMAND(networking) {
     } else if (strcmp(argv[0], "0") == 0 || strcmp(argv[0], "off") == 0) {
         enable = false;
     } else {
-        Serial.printf("Error: Invalid argument. Usage: networking [1/0/on/off]\n");
+        ioStream.printf("Error: Invalid argument. Usage: networking [1/0/on/off]\n");
         return -1;
     }   
 
     if (enable && Parameter.data.wifi.ssid[0] == 0) {
-        Serial.printf("Error: No WiFi configured, see param set ssid\n");
+        ioStream.printf("Error: No WiFi configured, see param set ssid\n");
         return -1;
     }
 
     if (enable == networking_enabled) {
-        Serial.printf("Networking already %s\n", networking_enabled ? "on" : "off");
+        ioStream.printf("Networking already %s\n", networking_enabled ? "on" : "off");
         return 0;
     }
 
     networking_enabled = enable;
-    Serial.printf("Networking %s\n", networking_enabled ? "on" : "off");
+    ioStream.printf("Networking %s\n", networking_enabled ? "on" : "off");
     if (networking_enabled) {
         setup_wifi();
     } else {
@@ -203,12 +203,12 @@ CLI_COMMAND(tx) {
 }
 
 CLI_COMMAND(txlog) {
-    Serial.print(irControl.getTxLog().c_str());
+    ioStream.print(irControl.getTxLog().c_str());
     return 0;
 }
 
 CLI_COMMAND(rxlog) {
-    Serial.print(irControl.getRxLog().c_str());
+    ioStream.print(irControl.getRxLog().c_str());
     return 0;
 }
 

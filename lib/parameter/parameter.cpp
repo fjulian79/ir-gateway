@@ -22,7 +22,7 @@
 #include <Arduino.h>
 #include "parameter.hpp"
 
-#define readStringParameter(_param_, ...)   readStringInto(_param_, sizeof(_param_), ##__VA_ARGS__)
+#define readStringParameter(_param_, ...)   readStringInto(ioStream, _param_, sizeof(_param_), ##__VA_ARGS__)
 
 Param<Parameter_t> Parameter;
 
@@ -37,34 +37,34 @@ const char parameterNames[] =
     "  ntp-server\n"
     "  timezone\n";
 
-String readString(bool secret = false) {
+String readString(Stream &ioStream, bool secret = false) {
     String ret;
     char c = 0;
 
     while(1) {
-        while(!Serial.available()) {
+        while(!ioStream.available()) {
             /* Waiting for user input must not trigger the loop watchdog.
              * One ms delay to avoid busy waiting */
             feedLoopWDT();
             delay(1);
         }
-        c = Serial.read();
+        c = ioStream.read();
 
         if (c == '\r') {
             /* pressed return, we are done */
-            Serial.write('\n');
+            ioStream.write('\n');
             break;
         } else if (c == 0x7f || c == 0x08) {
             /* pressed delete */ 
             uint32_t len = ret.length();
             if (len > 0) {
                 ret.remove(len-1);
-                Serial.write("\b \b");
+                ioStream.write("\b \b");
             } else {
-                //Serial.write('\a'); 
+                //ioStream.write('\a'); 
             }
         } else {
-            Serial.write(secret ? '*': c);
+            ioStream.write(secret ? '*': c);
             ret += (char) c;
         }        
     }
@@ -78,11 +78,11 @@ String readString(bool secret = false) {
  * e.g. a truncated WiFi password would silently prevent connecting.
  * @return true if the parameter has been updated.
  */
-bool readStringInto(char *param, size_t size, bool secret = false) {
-    String value = readString(secret);
+bool readStringInto(Stream &ioStream, char *param, size_t size, bool secret = false) {
+    String value = readString(ioStream, secret);
 
     if (value.length() >= size) {
-        Serial.printf("Error: Too long, max %u characters. Value not changed.\n", size - 1);
+        ioStream.printf("Error: Too long, max %u characters. Value not changed.\n", size - 1);
         return false;
     }
 
@@ -94,14 +94,14 @@ bool readStringInto(char *param, size_t size, bool secret = false) {
  * @brief Reads a yes/no value from the serial console.
  * @return true for "yes", "true", "on" or "1", false otherwise.
  */
-bool readBool(void) {
-    String value = readString();
+bool readBool(Stream &ioStream) {
+    String value = readString(ioStream);
 
     value.toLowerCase();
     return value == "yes" || value == "true" || value == "on" || value == "1";
 }
 
-int8_t param_clear(void) {
+int8_t param_clear(Stream &ioStream) {
     Parameter.clear();
         
     sprintf(Parameter.data.ip.hostname, "ir-gateway");
@@ -110,18 +110,18 @@ int8_t param_clear(void) {
     /* Vienna shall be the default */
     sprintf(Parameter.data.ntp.timezone, "CET-1CEST,M3.5.0,M10.5.0/3");
     
-    Serial.printf("Parameter cleared and set to initial defaults.\n");
+    ioStream.printf("Parameter cleared and set to initial defaults.\n");
     return 0;
 }
 
-int8_t param_write(void) {
-    Serial.printf("Enter Parameters in the following order:\n");
-    Serial.printf("%s", parameterNames);
+int8_t param_write(Stream &ioStream) {
+    ioStream.printf("Enter Parameters in the following order:\n");
+    ioStream.printf("%s", parameterNames);
     
     readStringParameter(Parameter.data.wifi.ssid);
     readStringParameter(Parameter.data.wifi.pass);
     readStringParameter(Parameter.data.ip.hostname);
-    Parameter.data.ip.dhcp = readBool();
+    Parameter.data.ip.dhcp = readBool(ioStream);
     readStringParameter(Parameter.data.ip.ipaddr);
     readStringParameter(Parameter.data.ip.netmask);
     readStringParameter(Parameter.data.ip.gateway);
@@ -130,93 +130,98 @@ int8_t param_write(void) {
     return 0;
 }
 
-int8_t param_set(const char *pName) {
+int8_t param_set(Stream &ioStream, const char *pName) {
     if(pName == 0) {
-        Serial.printf("Error, no parameter name given. Valid names are:\n");
-        Serial.printf("%s", parameterNames);
+        ioStream.printf("Error, no parameter name given. Valid names are:\n");
+        ioStream.printf("%s", parameterNames);
         return 0;
     }
 
     if (strcmp(pName, "ssid") == 0) {
-        Serial.printf("Enter WiFi SSID: ");
+        ioStream.printf("Enter WiFi SSID: ");
         readStringParameter(Parameter.data.wifi.ssid);
         return 0;
     }
 
     if (strcmp(pName, "wifi-passwd") == 0) {
-        Serial.printf("Enter WiFi password: ");
+        ioStream.printf("Enter WiFi password: ");
         readStringParameter(Parameter.data.wifi.pass, true);
         return 0;
     }
 
     if (strcmp(pName, "hostname") == 0) {
-        Serial.printf("Enter hostname: ");
+        ioStream.printf("Enter hostname: ");
         readStringParameter(Parameter.data.ip.hostname);
         return 0;
     }
 
     if (strcmp(pName, "dhcp") == 0) {
-        Serial.printf("Enable DHCP? [yes|no]: ");
-        Parameter.data.ip.dhcp = readBool();
+        ioStream.printf("Enable DHCP? [yes|no]: ");
+        Parameter.data.ip.dhcp = readBool(ioStream);
         return 0;
     }
 
     if (strcmp(pName, "ipaddr") == 0) {
-        Serial.printf("Enter IPv4 address: ");
+        ioStream.printf("Enter IPv4 address: ");
         readStringParameter(Parameter.data.ip.ipaddr);
         return 0;
     }
 
     if (strcmp(pName, "netmask") == 0) {
-        Serial.printf("Enter IPv4 netmask: ");
+        ioStream.printf("Enter IPv4 netmask: ");
         readStringParameter(Parameter.data.ip.netmask);
         return 0;
     }
 
     if (strcmp(pName, "gateway") == 0) {
-        Serial.printf("Enter IPv4 gateway: ");
+        ioStream.printf("Enter IPv4 gateway: ");
         readStringParameter(Parameter.data.ip.gateway);
 
         return 0;
     }
 
     if (strcmp(pName, "ntp-server") == 0) {
-        Serial.printf("Enter NTP server, hostname or IPv4 address: ");
+        ioStream.printf("Enter NTP server, hostname or IPv4 address: ");
         readStringParameter(Parameter.data.ntp.server);
     
         return 0;
     }
 
     if (strcmp(pName, "timezone") == 0) {
-        Serial.printf("Enter the timezone, see https://github.com/nayarsystems/posix_tz_db/blob/master/zones.csv for your zone: ");
+        ioStream.printf("Enter the timezone, see https://github.com/nayarsystems/posix_tz_db/blob/master/zones.csv for your zone: ");
         readStringParameter(Parameter.data.ntp.timezone);
         return 0;
     }
 
-    Serial.printf("Error: Invalid parameter!\n");
+    ioStream.printf("Error: Invalid parameter!\n");
 
     return -1;
 }
 
 CLI_COMMAND(param) {
+    if (argc == 0) {
+        ioStream.printf("Error: Missing command, see help.\n");
+        return -1;
+    }
+
     if (strcmp(argv[0], "clear") == 0) {
-        return param_clear();
+        return param_clear(ioStream);
     }
 
     if (strcmp(argv[0], "write") == 0) {
-        return param_write();
+        return param_write(ioStream);
     }
 
     if (strcmp(argv[0], "save") == 0) {
         Parameter.write();
-        Serial.printf("Parameter saved\n");
+        ioStream.printf("Parameter saved\n");
         return 0;
     }
 
     if (strcmp(argv[0], "set") == 0) {
-        return param_set(argv[1]);
+        return param_set(ioStream, argc > 1 ? argv[1] : nullptr);
     }
 
-    Serial.printf("Error: Invalid command!\n");
+    ioStream.printf("Error: Invalid command!\n");
     return -1;
 }
