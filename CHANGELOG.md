@@ -3,7 +3,7 @@
 All notable changes to this project will be documented in this file.
 The format is based on Keep a Changelog.
 
-## [Unreleased]
+## [v1.5.0] - 2026-10-26
 ### Added
 - Added `txlog on|off` and `rxlog on|off` to print new IR codes to the serial console as they occur, e.g. to learn the codes of a remote. The `info` command shows if it is on.
 ### Changed
