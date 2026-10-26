@@ -21,6 +21,7 @@
 
 #include "otacontrol.hpp"
 #include <ArduinoOTA.h>
+#include "syslog.hpp"
 
 #ifdef UPDATE_SIGN
 #include <Updater_Signing.h>
@@ -54,7 +55,7 @@ void OtaControl::begin(const char *hostname) {
 #endif
 
     ArduinoOTA.onStart([]() {
-        Serial.printf("OTA: Update started\n");
+        sysLog.printf("OTA: Update started\n");
     });
     ArduinoOTA.onProgress([](unsigned int progress, unsigned int total) {
         static uint8_t last = 0;
@@ -67,15 +68,15 @@ void OtaControl::begin(const char *hostname) {
         last = percent;
     });
     ArduinoOTA.onEnd([]() {
-        Serial.printf("OTA: Update done, rebooting ...\n");
+        sysLog.printf("OTA: Update done, rebooting ...\n");
     });
     ArduinoOTA.onError([](ota_error_t error) {
-        Serial.printf("OTA: Error %u\n", error);
+        sysLog.printf("OTA: Error %u\n", error);
     });
 
     ArduinoOTA.begin();
     Enabled = true;
-    Serial.printf("OTA: Ready, %s, %s\n",
+    sysLog.printf("OTA: Ready, %s, %s\n",
         isPasswordSet() ? "password protected" : "no password",
         SignatureRequired ? "signed images only" : "unsigned images accepted");
 }

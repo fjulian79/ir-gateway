@@ -25,6 +25,7 @@
 #include "ircontrol.hpp"
 #include "otacontrol.hpp"
 #include "healthcontrol.hpp"
+#include "syslog.hpp"
 #include <generic/uptime.hpp>
 #include <version/version.h>
 
@@ -51,7 +52,7 @@ void WebServerControl::begin() {
         setupRoutes();
         Server.begin();
         Enabled = true;
-        Serial.printf("WebServer started on port %d\n", Port);
+        sysLog.printf("WebServer: Started on port %d\n", Port);
     }
 }
 
@@ -59,7 +60,7 @@ void WebServerControl::stop() {
     if (Enabled) {
         Server.stop();
         Enabled = false;
-        Serial.println("WebServer stopped");
+        sysLog.printf("WebServer: Stopped\n");
     }
 }
 

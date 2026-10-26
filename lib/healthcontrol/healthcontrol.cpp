@@ -22,6 +22,7 @@
 #include "healthcontrol.hpp"
 #include <WiFi.h>
 #include <esp_task_wdt.h>
+#include "syslog.hpp"
 
 /**
  * @brief Interval of the health checks in ms.
@@ -73,7 +74,7 @@ void HealthControl::begin() {
     }
     rtcData.reason[0] = 0;
 
-    Serial.printf("Health: Reset reason %s%s%s, %u resets since power on\n",
+    sysLog.printf("Health: Reset reason %s%s%s, %u resets since power on\n",
         getResetReason(), restartReason[0] ? ", " : "", restartReason, rtcData.resetCount);
 
     /* Keep supervising the idle task of core 0 as configured by the core */
@@ -83,7 +84,7 @@ void HealthControl::begin() {
         .trigger_panic = true,
     };
     if (esp_task_wdt_reconfigure(&config) != ESP_OK) {
-        Serial.printf("Health: Failed to configure the watchdog\n");
+        sysLog.printf("Health: Failed to configure the watchdog\n");
     }
     enableLoopWDT();
 
@@ -125,7 +126,7 @@ void HealthControl::restart(const char *reason) {
     strncpy(rtcData.reason, reason, sizeof(rtcData.reason) - 1);
     rtcData.reason[sizeof(rtcData.reason) - 1] = 0;
 
-    Serial.printf("Health: Restarting, %s\n", rtcData.reason);
+    sysLog.printf("Health: Restarting, %s\n", rtcData.reason);
     Serial.flush();
     delay(100);
     ESP.restart();
