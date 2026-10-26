@@ -3,6 +3,7 @@
 .vscode/c_cpp_properties.json
 .vscode/launch.json
 .vscode/ipch
+.DS_Store
 
 # OTA password and signing key, created by scripts/ota_pre.py
 secrets/
