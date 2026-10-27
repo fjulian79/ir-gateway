@@ -286,12 +286,10 @@ ir-gateway/
 │   └── main.cpp              # Main application
 ├── lib/
 │   ├── common/               # Common utilities
-│   ├── eventlog/             # Log of the IR codes
 │   ├── healthcontrol/        # Watchdog, health checks and restarts
 │   ├── ircontrol/            # IR transmission/reception
 │   ├── otacontrol/           # OTA firmware updates
 │   ├── parameter/            # Configuration management
-│   ├── syslog/               # System log, timestamps and BoundedWriter
 │   └── webservercontrol/     # Web server handling
 └── README.md
 ```

@@ -30,7 +30,7 @@
 #include <IRutils.h>
 
 #include "common.hpp"
-#include "eventlog.hpp"
+#include <generic/eventlog.hpp>
 
 /**
  * @brief Size of the transmission and the reception log in bytes each.

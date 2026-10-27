@@ -23,6 +23,12 @@
 
 #include <Arduino.h>
 #include <version/version.h>
+#include <generic/syslog.hpp>
+
+/**
+ * @brief The system log of the device, defined in main.cpp.
+ */
+extern SysLog sysLog;
 
 /**
  * Pin definitions

@@ -20,7 +20,7 @@
  */
 
 #include "ircontrol.hpp"
-#include "timestamp.hpp"
+#include <generic/timestamp.hpp>
 
 IRControl::IRControl(uint8_t txPin, uint8_t rxPin)
     : irSend(txPin)

@@ -21,7 +21,7 @@
 
 #include "otacontrol.hpp"
 #include <ArduinoOTA.h>
-#include "syslog.hpp"
+#include "common.hpp"
 
 #ifdef UPDATE_SIGN
 #include <Updater_Signing.h>

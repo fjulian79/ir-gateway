@@ -22,7 +22,7 @@
 #include "healthcontrol.hpp"
 #include <WiFi.h>
 #include <esp_task_wdt.h>
-#include "syslog.hpp"
+#include "common.hpp"
 
 /**
  * @brief Interval of the health checks in ms.

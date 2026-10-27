@@ -23,7 +23,7 @@
 
 #include <WebServer.h>
 #include <Arduino.h>
-#include "eventlog.hpp"
+#include <generic/eventlog.hpp>
 
 /**
  * @brief Web server control class.

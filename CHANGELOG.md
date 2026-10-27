@@ -3,6 +3,10 @@
 All notable changes to this project will be documented in this file.
 The format is based on Keep a Changelog.
 
+## [Unreleased]
+### Changed
+- The system log, the IR logs and their timestamps are taken from `libgeneric` v2.2.0, which provides `SysLog`, `EventLog`, `BoundedWriter` and the timestamp functions now.
+
 ## [v1.5.0] - 2026-10-26
 ### Added
 - Added `txlog on|off` and `rxlog on|off` to print new IR codes to the serial console as they occur, e.g. to learn the codes of a remote. The `info` command shows if it is on.

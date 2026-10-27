@@ -35,8 +35,7 @@
 #include "webservercontrol.hpp"
 #include "otacontrol.hpp"
 #include "healthcontrol.hpp"
-#include "syslog.hpp"
-#include "timestamp.hpp"
+#include <generic/timestamp.hpp>
 
 UpTime upTime;
 /* Not initialized on startup, so the log is kept across resets */

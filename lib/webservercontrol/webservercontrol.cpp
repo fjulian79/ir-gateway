@@ -25,7 +25,7 @@
 #include "ircontrol.hpp"
 #include "otacontrol.hpp"
 #include "healthcontrol.hpp"
-#include "syslog.hpp"
+#include "common.hpp"
 #include <generic/uptime.hpp>
 #include <version/version.h>
 
